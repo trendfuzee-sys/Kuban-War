@@ -12,7 +12,7 @@ const css=document.createElement('style');css.textContent=`
 #storyDialog p{min-height:2.5em!important;margin:8px 0!important;font-size:clamp(16px,1.6vw,22px)!important}
 #storyDialog h3{color:#f4d276!important}
 #storyDialog header img{display:none!important}
-#storyDialog .kw-speaker{position:absolute;right:max(4vw,calc((100vw - 1060px)/2));bottom:50vh;height:clamp(100px,36vh,340px);width:clamp(100px,28vw,310px);object-fit:contain;object-position:bottom;border:0!important;filter:drop-shadow(0 5px 12px #0009);pointer-events:none}
+#storyDialog .kw-speaker{position:absolute;right:max(4vw,calc((100vw - 1060px)/2));bottom:calc(var(--kw-dialog-height, 220px) - 2px);height:clamp(100px,36vh,340px);width:clamp(100px,28vw,310px);object-fit:contain;object-position:bottom;border:0!important;filter:drop-shadow(0 5px 12px #0009);pointer-events:none}
 #storyDialog .kw-speaker[hidden]{display:none!important}
 #storyDialog .kw-speaker{height:clamp(100px,36vh,340px)!important;width:clamp(100px,28vw,310px)!important}
 #kw-interior{position:fixed;inset:0;z-index:110;background:#0009;display:grid;place-items:center}
@@ -24,9 +24,9 @@ const css=document.createElement('style');css.textContent=`
 #kw-interior button:disabled{opacity:.55}
 #kw-interior .kw-success{color:#b4edaf}
 `;document.head.append(css);
-const speaker=document.createElement('img');speaker.className='kw-speaker';speaker.hidden=true;dialog.append(speaker);
+const portraitCache=new Map();const speaker=document.createElement('img');speaker.className='kw-speaker';speaker.hidden=true;dialog.append(speaker);if(typeof ResizeObserver==='function')new ResizeObserver(()=>dialog.style.setProperty('--kw-dialog-height',dialog.querySelector('article').offsetHeight+'px')).observe(dialog.querySelector('article'));
 const oldPaint=paintTalk;paintTalk=function(){oldPaint();const who=String(talk?.lines[talk.n]?.[0]||'');const race=/данил|казак|хлебороб/i.test(who)?'kaz':/кровчин|беглец/i.test(who)?'nov':/суб[ие]д|всадник/i.test(who)?'mon':/богдан|студент|араб/i.test(who)?'bog':(CAM[scenario?.id]?.p||'kaz');const key=/эстон|адмирал/i.test(who)?'boss_admiral':/араб/i.test(who)?'special_arab':/данил|кровчин|суб[ие]д|богдан/i.test(who)?race+'_hero':/дозор|развед|всадник|казак/i.test(who)?race+'_unit_1':race+'_worker';
-speaker.hidden=!key;if(key){const path='unit-art/sprites/'+key+'.webp';const img=new Image();const token=++paintTalk.token;img.onload=()=>{if(token!==paintTalk.token||!talk)return;const c=document.createElement('canvas'),n=img.naturalWidth/6;c.width=n;c.height=img.naturalHeight/4;c.getContext('2d').drawImage(img,0,0,n,c.height,0,0,n,c.height);speaker.src=c.toDataURL();speaker.hidden=false};img.onerror=()=>{if(token!==paintTalk.token)return;if(race){speaker.src='img/'+race+'/hero.png.png';speaker.hidden=false}else speaker.hidden=true};speaker.hidden=true;img.src=path}else ++paintTalk.token};paintTalk.token=0;
+speaker.hidden=!key;if(key){const path='unit-art/sprites/'+key+'.webp';const token=++paintTalk.token;if(portraitCache.has(key)){speaker.src=portraitCache.get(key);speaker.hidden=false;return}const img=new Image();img.onload=()=>{if(token!==paintTalk.token||!talk)return;const c=document.createElement('canvas'),n=img.naturalWidth/6;c.width=n;c.height=img.naturalHeight/4;c.getContext('2d').drawImage(img,0,0,n,c.height,0,0,n,c.height);speaker.src=c.toDataURL();portraitCache.set(key,speaker.src);speaker.hidden=false};img.onerror=()=>{if(token!==paintTalk.token)return;if(race){speaker.src='img/'+race+'/hero.png.png';speaker.hidden=false}else speaker.hidden=true};speaker.hidden=true;img.src=path}else ++paintTalk.token};paintTalk.token=0;
 const panel=document.createElement('div');panel.id='kw-interior';panel.hidden=true;document.body.append(panel);
 let active=null,blockUntil=0;
 function closeInterior(){if(!active)return;const a=active;active=null;panel.hidden=true;panel.replaceChildren();if(run)paused=a.prev;blockUntil=performance.now()+1400}
