@@ -1,6 +1,7 @@
 /* KW 3D terrain integration: no changes to simulation or network state. */
 (()=>{
- let enabled=false,renderer=null,failed=false,ready=false,cache=null,signature='',lastMap=null,drawnBuildings=new Set(),drawnDecor=new Set();
+ let enabled=false,renderer=null,failed=false,ready=false,cache=null,signature='',lastMap=null,drawnBuildings=new Set(),drawnDecor=new Set(),drawnActors=new Set();
+ window.KW3DActor=e=>ready&&drawnActors.has(e);
  window.KW3DBuilding=e=>ready&&drawnBuildings.has(e);window.KW3DDecor=e=>ready&&drawnDecor.has(e);
  try{enabled=localStorage.getItem('kw.terrain3d')==='1'}catch(_){}
  const toggle=document.createElement('button');toggle.type='button';toggle.className='b';toggle.style.cssText='position:fixed;right:12px;top:50px;z-index:8;font-size:12px;padding:5px 9px';toggle.hidden=true;
@@ -20,9 +21,11 @@
  const decors=DEC.filter(d=>visible(d));
  const key=objects.map(e=>[e.id,e.x,e.y,e.r,e.race,e.ty,e.team].join(',')).join(';')+'|'+decors.map(d=>[d.x,d.y,d.t,d.s].join(',')).join(';');
  if(lastMap!==map||signature!==key){cache=window.KWEnvironment3D.build(objects,decors,(a,b)=>window.KWTerrain3D.elevation(a,b,map.width,map.height,mapSeed||0,flat||mask(a,b)),!!layout?.river,map.width,map.height);signature=key;lastMap=map}
- const frame=renderer.draw(map,x,y,w,h,dw,dh,mapSeed||0,flat,mask,cache);
+ const actors=E.filter(e=>e.k==='u'&&!e.dead&&!e.ship&&visible(e)&&seen(e)).slice(0,350);
+ const actorMesh=window.KWActors3D.build(actors,(a,b)=>window.KWTerrain3D.elevation(a,b,map.width,map.height,mapSeed||0,flat||mask(a,b)),t);
+ const frame=renderer.draw(map,x,y,w,h,dw,dh,mapSeed||0,flat,mask,cache,actorMesh);
  if(!frame)throw Error('Terrain context unavailable');
- ctx.drawImage(frame,sx,sy,dw,dh);drawnBuildings=new Set(objects);drawnDecor=new Set(decors);ready=true;return true;
+ ctx.drawImage(frame,sx,sy,dw,dh);drawnBuildings=new Set(objects);drawnDecor=new Set(decors);drawnActors=new Set(actors);ready=true;return true;
  }catch(err){failed=true;renderer?.dispose();renderer=null;label();console.warn('[3D terrain fallback]',err);return false}
  };
 })();
