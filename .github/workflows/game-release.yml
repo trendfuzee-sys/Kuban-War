@@ -22,6 +22,9 @@ jobs:
           test -f game-update/version.txt
           version=$(tr -d '\r\n' < game-update/version.txt)
           [[ "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          if [[ "$version" == "v1.2.10" && ! -f game-update/unit-art.zip ]]; then
+            echo "Waiting for unit-art.zip; no release created"; exit 0
+          fi
           if gh release view "$version" >/dev/null 2>&1; then
             echo "Version already published"; exit 0
           fi
