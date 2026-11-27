@@ -20,7 +20,7 @@ for a,b in [["g.setTransform(S*Z,0,0,S*Z,(-cam.x+sx/Z)*S*Z,(-cam.y+sy/Z)*S*Z);co
     s=s.replace(a,b,1)
 s=s.replace("g.setTransform(S*Z,0,0,S*Z,-cam.x*S*Z,-cam.y*S*Z)","window.KWCameraTransform(g)")
 root=Path(__file__).parent
-module="\n".join((root/n).read_text(encoding="utf-8") for n in ("terrain3d.js","environment3d.js","actors3d.js","atmosphere3d.js","camera3d.js","terrain3d_hook.js"))
+module="\n".join((root/n).read_text(encoding="utf-8") for n in ("terrain3d.js","environment3d.js","mission3d.js","actors3d.js","atmosphere3d.js","camera3d.js","terrain3d_hook.js"))
 if s.count("</body>")!=1:raise RuntimeError("Missing body")
 s=s.replace("</body>","<script>/* KW_TERRAIN_130 */\n"+module+"\n</script></body>",1)
 p.write_text(s,encoding="utf-8")
