@@ -1,0 +1,35 @@
+/* Two-sided story presentation, preserving original mission and choice logic. */
+(()=>{
+'use strict';
+const aliases={'данил':'danil','казак данил':'danil','кровчински':'krovchinski','полуживой вячислав кровчински':'krovchinski','субидей':'subidey','субидей исатаев':'subidey','богдан':'bogdan','богдан рыжий':'bogdan','адмирал эстон':'eston','эстон':'eston','сосед':'neighbor','хлебороб':'farmer','казак':'cossack','дозорный':'sentry','беглец':'fugitive','рабочий':'worker','посланник орды':'envoy','торговец':'merchant','всадник':'rider','старик':'elder','студент':'student','ботан':'nerd','араб':'arab','сожитель':'roommate','заключённый':'prisoner','выживший':'survivor','атаман':'concepts/ataman','военачальник':'concepts/commander','лидер беглецов':'concepts/outlaw','преподаватель':'concepts/dean','аристократ':'concepts/aristocrat'};
+const key=n=>aliases[String(n||'').trim().toLowerCase()]||null;
+const hero={kaz:'danil',nov:'krovchinski',mon:'subidey',bog:'bogdan'};
+const oldPortrait={danil:'kaz',krovchinski:'nov',subidey:'mon',bogdan:'bog'};
+const style=document.createElement('style');style.textContent=
+'#storyDialog.kw-duet{background:linear-gradient(180deg,#0002 0%,#0005 46%,#000d 100%)!important;isolation:isolate}'+
+'#storyDialog.kw-duet article{z-index:2;width:min(1040px,96vw)!important;max-height:45vh!important;border:2px solid #987b4d!important;border-top:4px solid #e0c58c!important;border-radius:12px 12px 0 0;background:linear-gradient(145deg,#35312a,#171b1c 42%,#21201b)!important;box-shadow:inset 0 0 0 3px #171817,inset 0 6px 12px #fff1,0 -8px 32px #0009!important}'+
+'#storyDialog.kw-duet .kw-speaker{display:none!important}'+
+'#storyDialog.kw-duet .kw-duet-stage{position:absolute;inset:0;pointer-events:none;z-index:1;overflow:hidden}'+
+'#storyDialog.kw-duet .kw-duet-slot{position:absolute;bottom:calc(var(--kw-duet-height,220px) - 6px);width:min(37vw,410px);height:min(48vh,430px);margin:0;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;filter:brightness(.48) saturate(.62);transform:scale(.94);transform-origin:bottom center;transition:filter .25s ease,transform .25s ease;opacity:.88}'+
+'#storyDialog.kw-duet .kw-duet-slot[data-side=left]{left:clamp(4px,6vw,120px)}#storyDialog.kw-duet .kw-duet-slot[data-side=right]{right:clamp(4px,6vw,120px)}'+
+'#storyDialog.kw-duet .kw-duet-slot.active{filter:brightness(1.05) saturate(1.06);transform:scale(1);opacity:1}'+
+'#storyDialog.kw-duet .kw-duet-slot img{display:block;width:100%;height:calc(100% - 34px);object-fit:contain;object-position:center bottom;filter:drop-shadow(0 6px 12px #000c);border:0!important}'+
+'#storyDialog.kw-duet .kw-duet-slot.active img{filter:drop-shadow(0 0 18px #e6bc6266) drop-shadow(0 6px 12px #000b)}'+
+'#storyDialog.kw-duet .kw-duet-slot figcaption{max-width:100%;padding:5px 16px;color:#e0d4bd;background:linear-gradient(#484136,#22221d);border:1px solid #89754e;box-shadow:inset 0 1px #fff3,0 3px 8px #0008;font-weight:bold;text-align:center;border-radius:4px}'+
+'#storyDialog.kw-duet .kw-duet-slot.active figcaption{color:#ffe8b1;border-color:#dfba6d;box-shadow:inset 0 1px #fff5,0 0 14px #cba04955}'+
+'#storyDialog.kw-duet .kw-duet-slot[hidden],#storyDialog.kw-duet .kw-duet-slot img[hidden]{display:none!important}'+
+'#storyDialog.kw-duet footer .b{background:linear-gradient(#514834,#29261e);border:1px solid #b39a69;box-shadow:inset 0 1px #e7d0a344,0 3px 0 #111;color:#f5e6c6}'+
+'@media(max-height:650px){#storyDialog.kw-duet .kw-duet-slot{height:29vh}}@media(prefers-reduced-motion:reduce){#storyDialog.kw-duet .kw-duet-slot{transition:none}}';
+document.head.append(style);dialog.classList.add('kw-duet');
+const stage=document.createElement('div');stage.className='kw-duet-stage';stage.setAttribute('aria-hidden','true');
+const slots=['left','right'].map(side=>{const el=document.createElement('figure'),img=document.createElement('img'),label=document.createElement('figcaption');el.className='kw-duet-slot';el.dataset.side=side;el.hidden=true;img.alt='';img.decoding='async';el.append(img,label);stage.append(el);return {el,img,label,who:null,path:null}});
+dialog.append(stage);
+const article=dialog.querySelector('article');const resize=()=>dialog.style.setProperty('--kw-duet-height',article.offsetHeight+'px');if(typeof ResizeObserver==='function')new ResizeObserver(resize).observe(article);
+function portrait(who){const k=key(who),m=window.KWDialoguePortraits||{},v=m[k],entry=v?.placeholder_only?m[v.fallback]:v;return entry?.portraits?.neutral||(oldPortrait[k]?'img/'+oldPortrait[k]+'/hero.png.png':null)}
+function assign(lines,n,preferred){const now=lines[n]?.[0];if(!now)return [null,null];const known=lines.map(l=>l[0]).filter(w=>key(w));const protagonist=known.find(w=>key(w)===preferred);const partner=[...lines.slice(0,n).reverse(),...lines.slice(n+1)].map(l=>l[0]).find(w=>w!==now&&key(w));
+if(key(now)===preferred)return [now,partner||null];
+if(protagonist)return [protagonist,now];
+const first=known[0];return now===first?[now,partner||null]:[partner||null,now]}
+function updateSlot(slot,who,active){slot.el.hidden=!who;slot.el.classList.toggle('active',!!who&&active);slot.label.textContent=who||'';const path=portrait(who);if(slot.who!==who||slot.path!==path){slot.who=who;slot.path=path;slot.img.hidden=!path;if(path){slot.img.onerror=()=>{slot.img.hidden=true};slot.img.src=path}else slot.img.removeAttribute('src')}}
+const previous=paintTalk;paintTalk=function(...args){const result=previous(...args);if(!talk)return result;const who=talk.lines[talk.n]?.[0],preferred=hero[CAM[scenario?.id??talk.id]?.p],pair=assign(talk.lines,talk.n,preferred);for(let i=0;i<2;i++)updateSlot(slots[i],pair[i],pair[i]===who);resize();return result};
+})();
