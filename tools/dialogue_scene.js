@@ -42,12 +42,20 @@ function emotionOrder(mood,txt){
  return ['neutral'];
 }
 function portrait(who,line){const k=key(who),m=window.KWDialoguePortraits||{},v=m[k],entry=v?.placeholder_only?m[v.fallback]:v,images=entry?.portraits||{};for(const e of [...emotionOrder(line?.[2],line?.[1]),'neutral'])if(images[e])return images[e];return oldPortrait[k]?'img/'+oldPortrait[k]+'/hero.png.png':null}
-function lastLine(lines,n,who){for(let i=n;i>=0;i--)if(lines[i]?.[0]===who)return lines[i];return null}
+function lastLine(lines,n,who){for(let i=n;i>=0;i--)if(lines[i]?.[0]===who||!!key(who)&&key(lines[i]?.[0])===key(who))return lines[i];return null}
 window.KWDialogueEmotion={emotionOrder,lastLine};
-function assign(lines,n,preferred){const now=lines[n]?.[0];if(!now)return [null,null];const known=lines.map(l=>l[0]).filter(w=>key(w));const protagonist=known.find(w=>key(w)===preferred);const partner=[...lines.slice(0,n).reverse(),...lines.slice(n+1)].map(l=>l[0]).find(w=>w!==now&&key(w));
-if(key(now)===preferred)return [now,partner||null];
-if(protagonist)return [protagonist,now];
-const first=known[0];return now===first?[now,partner||null]:[partner||null,now]}
+// Keep the protagonist (or first speaker) on the left for the entire scene.
+function assign(lines,n,preferred){
+ const now=lines[n]?.[0];if(!now)return [null,null];
+ const known=lines.map(l=>l[0]).filter(w=>key(w));
+ const left=known.find(w=>key(w)===preferred)||known[0]||lines[0]?.[0]||now;
+ const same=(a,b)=>a===b||!!key(a)&&key(a)===key(b);
+ if(!same(now,left))return [left,now];
+ const partner=[...lines.slice(0,n).reverse(),...lines.slice(n+1)].map(l=>l[0]).find(w=>w&&!same(w,left));
+ return [left,partner||null];
+}
 function updateSlot(slot,who,active,line){slot.el.hidden=!who;slot.el.classList.toggle('active',!!who&&active);slot.label.textContent=who||'';const path=portrait(who,line);if(slot.who!==who||slot.path!==path){slot.who=who;slot.path=path;slot.img.hidden=!path;if(path){slot.img.onerror=()=>{const neutral=portrait(who,null);if(neutral&&neutral!==path&&slot.img.getAttribute('src')===path){slot.img.src=neutral}else slot.img.hidden=true};slot.img.src=path}else slot.img.removeAttribute('src')}}
-const previous=paintTalk;paintTalk=function(...args){const result=previous(...args);if(!talk)return result;const who=talk.lines[talk.n]?.[0],preferred=hero[CAM[scenario?.id??talk.id]?.p],pair=assign(talk.lines,talk.n,preferred);for(let i=0;i<2;i++)updateSlot(slots[i],pair[i],pair[i]===who,lastLine(talk.lines,talk.n,pair[i]));resize();return result};
+const previous=paintTalk;paintTalk=function(...args){const result=previous(...args);if(!talk)return result;const who=talk.lines[talk.n]?.[0],preferred=hero[CAM[scenario?.id??talk.id]?.p],pair=assign(talk.lines,talk.n,preferred);for(let i=0;i<2;i++)updateSlot(slots[i],pair[i],(pair[i]===who||!!key(who)&&key(pair[i])===key(who)),lastLine(talk.lines,talk.n,pair[i]));resize();return result};
+// Older portrait renderer references the current wrapper's token.
+paintTalk.token=0;
 })();
