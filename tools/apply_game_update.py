@@ -39,6 +39,8 @@ if html.exists():
     subprocess.run([sys.executable, str(pathlib.Path(__file__).with_name('campaign_fix_1211.py')), str(html)], check=True)
     subprocess.run(['node', str(pathlib.Path(__file__).with_name('test_terrain3d.js'))], check=True)
     subprocess.run([sys.executable, str(pathlib.Path(__file__).with_name('install_terrain3d.py')), str(html)], check=True)
+    from install_dialogue_art import install_dialogue_art
+    install_dialogue_art(html, update)
     import re
     scripts = re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', html.read_text(encoding='utf-8'), re.S|re.I)
     if not scripts:
