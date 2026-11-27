@@ -22,11 +22,11 @@ function create(){
  const objectProgram=gl.createProgram();
  const oa=shader(gl.VERTEX_SHADER,'attribute vec3 p;attribute vec3 color;uniform vec2 origin,extent;varying vec3 c;void main(){c=color;vec2 q=(p.xy-origin)/extent;gl_Position=vec4(q.x*2.0-1.0,1.0-q.y*2.0+p.z/extent.y*1.1,clamp(-p.z/100.0,-0.99,0.99),1.0);}'),ob=shader(gl.FRAGMENT_SHADER,'precision mediump float;varying vec3 c;void main(){gl_FragColor=vec4(c,1.0);}');
  gl.attachShader(objectProgram,oa);gl.attachShader(objectProgram,ob);gl.linkProgram(objectProgram);gl.deleteShader(oa);gl.deleteShader(ob);if(!gl.getProgramParameter(objectProgram,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(objectProgram));
- const objectBuffer=gl.createBuffer(),ol={p:gl.getAttribLocation(objectProgram,'p'),color:gl.getAttribLocation(objectProgram,'color'),origin:gl.getUniformLocation(objectProgram,'origin'),extent:gl.getUniformLocation(objectProgram,'extent')};let objectKey=null,objectCount=0;
+ const actorBuffer=gl.createBuffer(),objectBuffer=gl.createBuffer(),ol={p:gl.getAttribLocation(objectProgram,'p'),color:gl.getAttribLocation(objectProgram,'color'),origin:gl.getUniformLocation(objectProgram,'origin'),extent:gl.getUniformLocation(objectProgram,'extent')};let objectKey=null,objectCount=0;
  const buffer=gl.createBuffer(),texture=gl.createTexture();let source=null,count=0,stamp='',lost=false;
  canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();lost=true});
  const loc={p:gl.getAttribLocation(program,'p'),uv:gl.getAttribLocation(program,'uv'),origin:gl.getUniformLocation(program,'origin'),extent:gl.getUniformLocation(program,'extent'),tex:gl.getUniformLocation(program,'tex')};
- function draw(map,x,y,w,h,pw,ph,seed,flat,mask,environment){
+ function draw(map,x,y,w,h,pw,ph,seed,flat,mask,environment,actors){
  if(lost||!map||!w||!h)return null;
  const signature=[map.width,map.height,seed,flat].join(':');
  if(source!==map||signature!==stamp){
@@ -39,9 +39,10 @@ function create(){
  gl.viewport(0,0,cw,ch);gl.clearColor(.09,.13,.09,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.enable(gl.DEPTH_TEST);gl.disable(gl.CULL_FACE);gl.useProgram(program);gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.enableVertexAttribArray(loc.p);gl.vertexAttribPointer(loc.p,3,gl.FLOAT,false,20,0);gl.enableVertexAttribArray(loc.uv);gl.vertexAttribPointer(loc.uv,2,gl.FLOAT,false,20,12);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,texture);gl.uniform1i(loc.tex,0);gl.uniform2f(loc.origin,x,y);gl.uniform2f(loc.extent,w,h);gl.drawArrays(gl.TRIANGLES,0,count);
  if(environment){if(objectKey!==environment){gl.bindBuffer(gl.ARRAY_BUFFER,objectBuffer);gl.bufferData(gl.ARRAY_BUFFER,environment,gl.STATIC_DRAW);objectKey=environment;objectCount=environment.length/6}
  gl.useProgram(objectProgram);gl.disableVertexAttribArray(loc.p);gl.disableVertexAttribArray(loc.uv);gl.bindBuffer(gl.ARRAY_BUFFER,objectBuffer);gl.enableVertexAttribArray(ol.p);gl.vertexAttribPointer(ol.p,3,gl.FLOAT,false,24,0);gl.enableVertexAttribArray(ol.color);gl.vertexAttribPointer(ol.color,3,gl.FLOAT,false,24,12);gl.uniform2f(ol.origin,x,y);gl.uniform2f(ol.extent,w,h);gl.drawArrays(gl.TRIANGLES,0,objectCount);gl.disableVertexAttribArray(ol.p);gl.disableVertexAttribArray(ol.color)}
+ if(actors?.length){gl.useProgram(objectProgram);gl.disableVertexAttribArray(loc.p);gl.disableVertexAttribArray(loc.uv);gl.bindBuffer(gl.ARRAY_BUFFER,actorBuffer);gl.bufferData(gl.ARRAY_BUFFER,actors,gl.DYNAMIC_DRAW);gl.enableVertexAttribArray(ol.p);gl.vertexAttribPointer(ol.p,3,gl.FLOAT,false,24,0);gl.enableVertexAttribArray(ol.color);gl.vertexAttribPointer(ol.color,3,gl.FLOAT,false,24,12);gl.uniform2f(ol.origin,x,y);gl.uniform2f(ol.extent,w,h);gl.drawArrays(gl.TRIANGLES,0,actors.length/6);gl.disableVertexAttribArray(ol.p);gl.disableVertexAttribArray(ol.color)}
  return canvas;
  }
- return {draw,dispose(){gl.deleteBuffer(objectBuffer);gl.deleteProgram(objectProgram);gl.deleteBuffer(buffer);gl.deleteTexture(texture);gl.deleteProgram(program);lost=true}};
+ return {draw,dispose(){gl.deleteBuffer(actorBuffer);gl.deleteBuffer(objectBuffer);gl.deleteProgram(objectProgram);gl.deleteBuffer(buffer);gl.deleteTexture(texture);gl.deleteProgram(program);lost=true}};
 }
 const api={mesh,elevation,create};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.KWTerrain3D=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
