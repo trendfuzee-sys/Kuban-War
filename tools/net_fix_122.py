@@ -145,12 +145,11 @@ replace("online.currentRoom=state.room;const box=", "online.currentRoom=state.ro
 replace("p_nickname:saveNick()", "p_nickname:kwNick()") if s.count("p_nickname:saveNick()")==1 else None
 s=s.replace("p_nickname:saveNick()", "p_nickname:kwNick()")
 replace("?.nickname||'—')", "?.nickname?.split('~')[0]||'—')")
-replace("for(const p of state.players)box.append(html('p',", "for(const p of state.players)box.append(html('p',")
-replace("\x60\x24{p.nickname}\x24{p.user_id", "\x60\x24{kwChoice(p).name} · \x24{kwChoice(p).race||'—'}\x24{p.user_id")
+replace("\x60\x24{p.nickname}\x24{p.user_id", "\x60\x24{kwChoice(p).name} · \x24{RACE_NAMES[kwChoice(p).race]||'—'}\x24{p.user_id")
 replace("const myReady=!!state.mine?.ready;", """const myReady=!!state.mine?.ready;
 if(!state.match||state.match.status!=='running'){
  const chooser=html('div',null,'kw-online-config');chooser.innerHTML='<h2>Ваша фракция</h2>'+raceSelectMarkup(kwChoice(state.mine).race||kwSelectedRace(),'data-my-race');
- const select=chooser.querySelector('select');select.disabled=myReady;select.onchange=()=>{localStorage.setItem('kuban.online.race',select.value);guarded(async()=>{await request('/rest/v1/kuban_players?user_id=eq.'+encodeURIComponent(state.me),'PATCH',{nickname:kwNick()});await refreshLobby()})};box.append(chooser);
+ const select=chooser.querySelector('select');select.disabled=myReady;select.onchange=()=>{localStorage.setItem('kuban.online.race',select.value);guarded(async()=>{await patch('kuban_players?user_id=eq.'+encodeURIComponent(state.me),{nickname:kwNick()});const rows=await get('kuban_players?select=nickname&user_id=eq.'+encodeURIComponent(state.me));if(rows[0]?.nickname!==kwNick())throw Error('Не удалось сохранить фракцию. Проверьте права обновления профиля.');await refreshLobby()})};box.append(chooser);
 }""")
 replace("<label>Раса хоста \x24{raceSelectMarkup(DEFAULT_CFG.hostRace,'data-host-race')}</label><label>Раса гостя \x24{raceSelectMarkup(DEFAULT_CFG.guestRace,'data-guest-race')}</label>","")
 replace("players.every(p=>p.ready)&&room.host_id", "players.every(p=>p.ready&&kwChoice(p).race)&&room.host_id")
