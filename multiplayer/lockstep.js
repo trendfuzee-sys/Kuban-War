@@ -28,6 +28,6 @@ class Lockstep {
   }return count
  }
  compare(frame){const local=this.localHashes.get(frame),row=this.checks.get(frame);if(local&&row&&[...row.values()].some(v=>v!==local))this.fault='Desync at tick '+frame}
- receiveHash(slot,frame,value){if(!this.slots.includes(slot)||!Number.isSafeInteger(frame)||frame%30||frame<this.frame-300||frame>this.frame+300||typeof value!=='string'||value.length>128)return false;let row=this.checks.get(frame);if(!row)this.checks.set(frame,row=new Map());if(row.has(slot)&&row.get(slot)!==value){this.fault='Conflicting checksum';return false}row.set(slot,value);this.compare(frame);return true}
+ receiveHash(slot,frame,value){if(!this.slots.includes(slot)||!Number.isSafeInteger(frame)||frame%30||frame<this.frame-300||frame>this.frame+300||typeof value!=='string'||value.length>128)return false;let row=this.checks.get(frame);if(!row)this.checks.set(frame,row=new Map());if(row.has(slot)&&row.get(slot)!==value){this.fault='Conflicting checksum';return false}row.set(slot,value);this.compare(frame);return !this.fault}
 }
 if(typeof module!=='undefined')module.exports=Lockstep;
