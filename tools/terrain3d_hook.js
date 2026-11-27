@@ -1,7 +1,8 @@
 /* KW 3D terrain integration: no changes to simulation or network state. */
 (()=>{
  let angle=0,tilt=1;
- let enabled=false,renderer=null,failed=false,ready=false,cache=null,signature='',lastMap=null,waterMap=null,waterMesh=null,drawnBuildings=new Set(),drawnDecor=new Set(),drawnActors=new Set();
+ let enabled=false,renderer=null,failed=false,ready=false,cache=null,signature='',lastMap=null,waterMap=null,waterMesh=null,drawnBuildings=new Set(),drawnDecor=new Set(),drawnActors=new Set(),drawnShips=new Set();
+ window.KW3DShip=e=>ready&&drawnShips.has(e);
  window.KW3DActor=e=>ready&&drawnActors.has(e);
  window.KW3DBuilding=e=>ready&&drawnBuildings.has(e);window.KW3DDecor=e=>ready&&drawnDecor.has(e);
  try{enabled=localStorage.getItem('kw.terrain3d')==='1'}catch(_){}
@@ -31,18 +32,20 @@
  const margin=160+((angle||tilt!==1)?Math.hypot(w,h):0),visible=o=>o.x>=x-margin&&o.x<=x+w+margin&&o.y>=y-margin&&o.y<=y+h+margin;
  const objects=E.filter(e=>e.k==='b'&&!e.dead&&e.pg>=1&&['h','b','s','t','w','l'].includes(e.ty)&&visible(e)&&known(e));
  const decors=DEC.filter(d=>visible(d));
- const theme=terrainBiome(),props=(layout?.props||[]).filter(visible),obstacles=(layout?.obstacles||[]).filter(visible);
+ const seaMode=mis?.ci===4&&!!naval,theme=terrainBiome(),props=seaMode?[]:(layout?.props||[]).filter(visible),obstacles=seaMode?[]:(layout?.obstacles||[]).filter(visible);
  const key=theme+'|'+props.map(p=>[p.x,p.y,p.type,p.variant,p.name].join(',')).join(';')+'|'+obstacles.map(o=>[o.x,o.y,o.rx,o.ry].join(',')).join(';')+'|'+objects.map(e=>[e.id,e.x,e.y,e.r,e.race,e.ty,e.team].join(',')).join(';')+'|'+decors.map(d=>[d.x,d.y,d.t,d.s].join(',')).join(';');
  if(lastMap!==map||signature!==key){cache=window.KWEnvironment3D.build(objects,decors,(a,b)=>window.KWTerrain3D.elevation(a,b,map.width,map.height,mapSeed||0,flat||mask(a,b)),!!layout?.river,map.width,map.height);const landmarks=window.KWMission3D.build(props,obstacles,theme,(a,b)=>window.KWTerrain3D.elevation(a,b,map.width,map.height,mapSeed||0,flat||mask(a,b)),()=>true);const combined=new Float32Array(cache.length+landmarks.length);combined.set(cache);combined.set(landmarks,cache.length);cache=combined;signature=key;lastMap=map}
  const actors=E.filter(e=>e.k==='u'&&!e.dead&&!e.ship&&visible(e)&&seen(e)).slice(0,350);
- const actorMesh=window.KWActors3D.build(actors,(a,b)=>window.KWTerrain3D.elevation(a,b,map.width,map.height,mapSeed||0,flat||mask(a,b)),t);
+ let actorMesh=window.KWActors3D.build(actors,(a,b)=>window.KWTerrain3D.elevation(a,b,map.width,map.height,mapSeed||0,flat||mask(a,b)),t);
+ const ships=seaMode?E.filter(e=>e.ship&&!e.dead&&visible(e)&&seen(e)):[];
+ if(ships.length){const vessel=window.KWNaval3D.build(ships,t,naval.shield,naval.phase),merged=new Float32Array(actorMesh.length+vessel.length);merged.set(actorMesh);merged.set(vessel,actorMesh.length);actorMesh=merged}
  const atmosphere=window.KWAtmosphere3D;
  const height=(a,b)=>window.KWTerrain3D.elevation(a,b,map.width,map.height,mapSeed||0,flat||mask(a,b));
- if(waterMap!==map){waterMesh=atmosphere.water(map.width,map.height,PONDS,layout?.river&&typeof KW_RIVER!=='undefined'?KW_RIVER.river:null,false);waterMap=map}
- const fx={view:[Math.cos(angle),Math.sin(angle),tilt],time:t,light:atmosphere.light(t,!!(ST.dn&&NIGHT),terrainBiome()==='cellar'),water:mis?.ci===4?null:waterMesh,shadows:ST.sh?atmosphere.shadows(objects.concat(actors),height,!!NIGHT):null};
+ if(waterMap!==map){waterMesh=seaMode?window.KWNaval3D.sea(map.width,map.height,deck):atmosphere.water(map.width,map.height,PONDS,layout?.river&&typeof KW_RIVER!=='undefined'?KW_RIVER.river:null,false);waterMap=map}
+ const fx={view:[Math.cos(angle),Math.sin(angle),tilt],time:t,light:atmosphere.light(t,!!(ST.dn&&NIGHT),terrainBiome()==='cellar'),water:waterMesh,shadows:ST.sh?atmosphere.shadows(objects.concat(actors),height,!!NIGHT):null};
  const frame=renderer.draw(map,x,y,w,h,dw,dh,mapSeed||0,flat,mask,cache,actorMesh,fx);
  if(!frame)throw Error('Terrain context unavailable');
- ctx.drawImage(frame,sx,sy,dw,dh);drawnBuildings=new Set(objects);drawnDecor=new Set(decors);drawnActors=new Set(actors);ready=true;return true;
+ ctx.drawImage(frame,sx,sy,dw,dh);drawnBuildings=new Set(objects);drawnDecor=new Set(decors);drawnActors=new Set(actors);drawnShips=new Set(ships);ready=true;return true;
  }catch(err){failed=true;renderer?.dispose();renderer=null;label();console.warn('[3D terrain fallback]',err);return false}
  };
 })();
