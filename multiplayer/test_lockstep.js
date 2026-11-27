@@ -1,0 +1,7 @@
+const assert=require('node:assert/strict');const Lockstep=require('./lockstep');
+const slots=[0,1,3,4];function make(){const world=slots.map(()=>0);const l=new Lockstep({slots,seed:42,apply:(s,c)=>{world[slots.indexOf(s)]+=c.n},tick:(dt,l)=>{for(let i=0;i<world.length;i++)world[i]+=Math.floor(l.random()*10)},hash:()=>JSON.stringify(world)});return {l,world}}
+const peers=slots.map(make);for(let f=0;f<180;f++){const packets=slots.map(slot=>({slot,frame:f,commands:[{n:f%7+slot}]}));for(let i=0;i<peers.length;i++){const {l}=peers[i];const order=i%2?packets.slice().reverse():packets;for(const p of order.slice(1))assert(l.submit(p.slot,p.frame,p.commands));assert.equal(l.advance(),0);assert.deepEqual(l.missing(),[order[0].slot]);assert(l.submit(order[0].slot,f,order[0].commands));assert(l.submit(order[0].slot,f,order[0].commands));assert.equal(l.advance(),1)}if((f+1)%30===0)for(const {l} of peers)for(let i=0;i<peers.length;i++)assert(l.receiveHash(slots[i],f+1,peers[i].l.localHashes.get(f+1)))}
+for(const {world,l} of peers){assert.deepEqual(world,peers[0].world);assert.equal(l.fault,null)}
+const {l}=make();assert.equal(l.prepare(0,[{n:2}],4).length,5);assert.equal(l.resend(4,4)[0].commands[0].n,2);assert.equal(l.submit(0,4,[{n:99}]),false);assert.match(l.fault,/Conflicting/);
+assert(peers[0].l.receiveHash(1,180,'wrong')===false);assert(peers[0].l.fault);
+console.log('Lockstep tests passed: 4 peers, 180 ticks, loss/reorder/duplicate recovery, checksum and conflict detection');
