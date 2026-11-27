@@ -12,7 +12,7 @@ def install_dialogue_art(html,update):
         if len(names)!=len(set(names)) or sum(i.file_size for i in z.infolist())>16*1024*1024 or z.testzip():
             raise RuntimeError("Invalid dialogue portrait archive")
         m=json.loads(z.read("dialogue-art/manifest.json"))
-        if set(m)!=KEYS: raise RuntimeError("Unexpected portrait roster")
+        if not m or not set(m)<=KEYS: raise RuntimeError("Unexpected portrait roster")
         required={"dialogue-art/manifest.json"}; count=0
         for key,v in m.items():
             if v.get("placeholder_only"):
@@ -24,7 +24,7 @@ def install_dialogue_art(html,update):
                 data=z.read(path)
                 if len(data)<20 or len(data)>1024*1024 or data[:4]!=b"RIFF" or data[8:12]!=b"WEBP": raise RuntimeError("Invalid portrait image")
                 required.add(path);count+=1
-        if count!=72 or set(names)!=required: raise RuntimeError("Unexpected portrait count or files")
+        if not 1<=count<=200 or set(names)!=required: raise RuntimeError("Unexpected portrait count or files")
         for path in sorted(required):
             dest=html.parent/path;dest.parent.mkdir(parents=True,exist_ok=True);dest.write_bytes(z.read(path))
         manifest=html.parent/"dialogue-art/manifest.js"
