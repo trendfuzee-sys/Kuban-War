@@ -19,7 +19,7 @@ const style=document.createElement('style');style.textContent=
 '#storyDialog.kw-duet article{z-index:2;width:min(1040px,96vw)!important;max-height:45vh!important;border:2px solid #987b4d!important;border-top:4px solid #e0c58c!important;border-radius:12px 12px 0 0;background:linear-gradient(145deg,#35312a,#171b1c 42%,#21201b)!important;box-shadow:inset 0 0 0 3px #171817,inset 0 6px 12px #fff1,0 -8px 32px #0009!important}'+
 '#storyDialog.kw-duet .kw-speaker{display:none!important}'+
 '#storyDialog.kw-duet .kw-duet-stage{position:absolute;inset:0;pointer-events:none;z-index:1;overflow:hidden}'+
-'#storyDialog.kw-duet .kw-duet-slot{position:absolute;bottom:calc(var(--kw-duet-height,220px) - 6px);width:min(37vw,410px);height:min(48vh,430px);margin:0;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;filter:brightness(.48) saturate(.62);transform:scale(.94);transform-origin:bottom center;transition:filter .25s ease,transform .25s ease;opacity:.88}'+
+'#storyDialog.kw-duet .kw-duet-slot{position:absolute;bottom:calc(var(--kw-duet-height,220px) - 6px);width:min(37vw,410px);height:min(48vh,430px);margin:0;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;filter:brightness(.72) saturate(.82);transform:scale(.94);transform-origin:bottom center;transition:filter .25s ease,transform .25s ease;opacity:.96}'+
 '#storyDialog.kw-duet .kw-duet-slot[data-side=left]{left:clamp(4px,6vw,120px)}#storyDialog.kw-duet .kw-duet-slot[data-side=right]{right:clamp(4px,6vw,120px)}'+
 '#storyDialog.kw-duet .kw-duet-slot.active{filter:brightness(1.05) saturate(1.06);transform:scale(1);opacity:1}'+
 '#storyDialog.kw-duet .kw-duet-slot img{display:block;width:100%;height:calc(100% - 34px);object-fit:contain;object-position:center bottom;filter:drop-shadow(0 6px 12px #000c);border:0!important}'+
@@ -105,7 +105,7 @@ paintTalk.token=0;
 /* Campaign presentation and optional civilian conversations. */
 const polish=document.createElement('style');
 const cursor=(svg,x,y)=>'url("data:image/svg+xml,'+encodeURIComponent(svg)+'") '+x+' '+y;
-const arrow=cursor('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><path d="M3 2L5 27L12 19L19 28L24 24L16 15L27 12Z" fill="#ead39b" stroke="#382719" stroke-width="2" stroke-linejoin="round"/><path d="M5 5L22 12L12 14Z" fill="#fff3cd"/></svg>',3,2);
+const arrow=cursor('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><defs><linearGradient id="m" x2="1" y2="1"><stop stop-color="#fff5c9"/><stop offset=".45" stop-color="#c5a35b"/><stop offset=".7" stop-color="#fff0b0"/><stop offset="1" stop-color="#76512b"/></linearGradient></defs><path d="M3 2L5 27L12 19L19 28L24 24L16 15L27 12Z" fill="url(#m)" stroke="#21180e" stroke-width="2" stroke-linejoin="round"/><path d="M5 5L22 12L12 14Z" fill="#fff3cd"/><path d="M6 22L10 15L21 25" fill="none" stroke="#8d632f"/></svg>',3,2);
 const hand=cursor('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><path d="M11 17V5Q14 1 17 5V13L21 12L27 16V23L22 29H12L4 18Q4 14 8 15Z" fill="#ecd49a" stroke="#39291b" stroke-width="2"/></svg>',14,4);
 polish.textContent='html,body{cursor:'+arrow+',auto}button:not(:disabled),[role=button],a,select{cursor:'+hand+',pointer!important}#cv:not([style*="cursor"]){cursor:'+arrow+',auto}'+
 '#top,#pan{background:linear-gradient(180deg,#655440 0%,#30291f 12%,#1d211e 55%,#332b20 100%);box-shadow:inset 0 2px #e6ca8540,inset 0 -3px #090a09,0 4px 14px #0008}'+
@@ -124,7 +124,7 @@ const edits=new Map([
 ['Проверим, если будет время.','Ладно, запомню. Если будет время, загляну.']
 ]);
 const originalShow=showTalk;
-showTalk=function(lines,done){return originalShow(lines.map(l=>Array.isArray(l)&&edits.has(l[1])?[l[0],edits.get(l[1]),...l.slice(2)]:l),done)};
+showTalk=function(lines,done){return originalShow(lines.some(l=>Array.isArray(l)&&edits.has(l[1]))&&!(scenario&&lines===CAM[scenario.id]?.lines)?lines.map(l=>Array.isArray(l)&&edits.has(l[1])?[l[0],edits.get(l[1]),...l.slice(2)]:l):lines,done)};
 const btn=document.createElement('button');btn.id='kw-civil-talk';btn.className='b';btn.hidden=true;document.body.append(btn);
 const conversations=[
  {name:'Хлебороб',lines:['С утра на ногах. Хорошо хоть сегодня дождя нет.','Да куда нам уходить? Здесь дом, земля. Вот бы только спокойно дожить до вечера.']},
