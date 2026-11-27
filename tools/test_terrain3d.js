@@ -30,3 +30,13 @@ assert.ok(m.length>0&&m.length%18===0&&m.every(Number.isFinite));
 assert.equal(mission.build(props,obstacles,theme,()=>0,()=>false).length,0);
 assert.equal(JSON.stringify([props,obstacles]),before)}
 console.log('Fourteen campaign theme mesh tests passed');
+
+const quality=require('./quality3d.js'),naval3d=require('./naval3d.js');
+assert.equal(quality.preset(0).actors,65);assert.equal(quality.preset(3).actors,350);
+assert.equal(quality.choose([{id:1,x:0,y:0},{id:2,x:100,y:100,i:9}],1,0,0)[0].id,2);
+const adapt=quality.adaptive();let f=1;for(let i=1;i<=360;i++)f=adapt.sample(i*40);assert.ok(f<1&&f>=.65);
+adapt.reset();assert.equal(adapt.sample(1),1);
+const ships=[{id:1,x:100,y:100,ship:'boss',sailAngle:1.2},{id:2,x:200,y:200,ship:'escort',sailAngle:0}];
+const shipMesh=naval3d.build(ships,2,true,3);assert.ok(shipMesh.length>0&&shipMesh.length%18===0&&shipMesh.every(Number.isFinite));
+assert.ok(naval3d.sea(3000,2000,{x:700,y:430}).every(Number.isFinite));
+console.log('Quality and naval mesh tests passed');
