@@ -172,4 +172,18 @@ replace("function renderPoint(v,now){","function kwLocalClick(x,y,rad,l,c){if(!n
 replace("const now=clock(),restore=[],oldT=t;","const now=clock(),restore=[],oldT=t,oldFX=FX;")
 replace("t=oldT+Math.min(.2,Math.max(0,(now-n.lastApplied)/1000));","t=oldT+Math.min(.2,Math.max(0,(now-n.lastApplied)/1000));n.localClicks=(n.localClicks||[]).filter(f=>f.until>now);FX=oldFX.concat(n.localClicks.map(f=>({...f,l:(f.until-now)/1000})));")
 replace("}finally{t=oldT;for(const [e,x,y] of restore)","}finally{FX=oldFX;t=oldT;for(const [e,x,y] of restore)")
+
+# The later positional-audio mixer replaces the original say() at runtime.
+replace("say=function(id,act,pr,source){if(!id", "say=function(id,act,pr,source){if(window.kubanOnlineAlpha?.remoteInput)return;if(!id")
+replace("function queueSpeech(a,{source=null,priority=1,ui=false,enemy=false,key='',ttl=2400}={}){if(!ST.voice", "function queueSpeech(a,{source=null,priority=1,ui=false,enemy=false,key='',ttl=2400}={}){if(window.kubanOnlineAlpha?.remoteInput)return;if(!ST.voice")
+replace("fieldSound=function(key,u){if(!run", "fieldSound=function(key,u){if(window.kubanOnlineAlpha?.remoteInput)return;if(!run")
+replace("function speechVolume(q){return Math.max", "function speechVolume(q){if(window.kubanOnlineAlpha?.currentMatch&&q.source?.team!==undefined&&q.source.team!==0){if(q.ui||!fxVisible(q.source)||cameraGain(q.source)<.035)return 0}return Math.max")
+replace("const previous=online.remoteInput;online.remoteInput=true;try{hostPerspectiveSwap", "const previous=online.remoteInput,oldShake=shake;online.remoteInput=true;try{hostPerspectiveSwap")
+replace("finally{online.remoteInput=previous}}", "finally{online.remoteInput=previous;shake=oldShake}}")
+replace("if(n)FX.push({ty:'r',x:s.x,y:s.y,rad:22,l:.6,c:'#a6e3ef'});","if(n&&!window.kubanOnlineAlpha?.remoteInput)FX.push({ty:'r',localInput:true,x:s.x,y:s.y,rad:22,l:.6,c:'#a6e3ef'});")
+# Formation drag was bypassing the guest command router and being reverted by snapshots.
+replace("function formationCommit(plan,assault=false){const ok=plan.filter(p=>p.ok);","function formationCommit(plan,assault=false){if(window.kubanOnlineAlpha?.role==='guest'){window.kubanOnlineAlpha.sendFormation?.(plan,assault);return}const ok=plan.filter(p=>p.ok);")
+replace("formationFlash={plan:ok,until:performance.now()+700};","if(!window.kubanOnlineAlpha?.remoteInput)formationFlash={plan:ok,until:performance.now()+700};")
+replace("case 'stance':{sel=E.filter","case 'formation':{const points=payload.points||[];const plan=points.map(p=>{const u=E.find(e=>e.id===p.id&&e.team===0&&e.k==='u'&&!e.dead);return u?{u,x:cl(p.x,u.r+4,WW-u.r-4),y:cl(p.y,u.r+4,WH-u.r-4),ok:!blocked(p.x,p.y,u.r)}:null}).filter(Boolean);formationCommit(plan,!!payload.assault);break}case 'stance':{sel=E.filter")
+replace("online.abortMatch=exitNetwork;window.kubanOnlineAlpha=online;","online.abortMatch=exitNetwork;online.sendFormation=(plan,assault)=>{const ok=plan.filter(p=>p.ok&&p.u?.team===0&&!p.u.dead);if(!ok.length)return;sendCommand('formation',{points:ok.map(p=>({id:p.u.id,x:p.x,y:p.y})),assault:!!assault});say(vk(ok.find(p=>p.u.i===9)?.u||ok[0].u),'order');formationFlash={plan:ok,until:performance.now()+700};for(const p of ok)kwLocalClick(p.x,p.y,10,.45,'#e7cd83')};window.kubanOnlineAlpha=online;")
 p.write_text(s,encoding="utf-8")
