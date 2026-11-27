@@ -1,6 +1,6 @@
 /* KW 3D terrain integration: no changes to simulation or network state. */
 (()=>{
- let enabled=false,renderer=null,failed=false,ready=false,cache=null,signature='',lastMap=null,drawnBuildings=new Set(),drawnDecor=new Set(),drawnActors=new Set();
+ let enabled=false,renderer=null,failed=false,ready=false,cache=null,signature='',lastMap=null,waterMap=null,waterMesh=null,drawnBuildings=new Set(),drawnDecor=new Set(),drawnActors=new Set();
  window.KW3DActor=e=>ready&&drawnActors.has(e);
  window.KW3DBuilding=e=>ready&&drawnBuildings.has(e);window.KW3DDecor=e=>ready&&drawnDecor.has(e);
  try{enabled=localStorage.getItem('kw.terrain3d')==='1'}catch(_){}
@@ -23,7 +23,11 @@
  if(lastMap!==map||signature!==key){cache=window.KWEnvironment3D.build(objects,decors,(a,b)=>window.KWTerrain3D.elevation(a,b,map.width,map.height,mapSeed||0,flat||mask(a,b)),!!layout?.river,map.width,map.height);signature=key;lastMap=map}
  const actors=E.filter(e=>e.k==='u'&&!e.dead&&!e.ship&&visible(e)&&seen(e)).slice(0,350);
  const actorMesh=window.KWActors3D.build(actors,(a,b)=>window.KWTerrain3D.elevation(a,b,map.width,map.height,mapSeed||0,flat||mask(a,b)),t);
- const frame=renderer.draw(map,x,y,w,h,dw,dh,mapSeed||0,flat,mask,cache,actorMesh);
+ const atmosphere=window.KWAtmosphere3D;
+ const height=(a,b)=>window.KWTerrain3D.elevation(a,b,map.width,map.height,mapSeed||0,flat||mask(a,b));
+ if(waterMap!==map){waterMesh=atmosphere.water(map.width,map.height,PONDS,layout?.river&&typeof KW_RIVER!=='undefined'?KW_RIVER.river:null,false);waterMap=map}
+ const fx={time:t,light:atmosphere.light(t,!!(ST.dn&&NIGHT),terrainBiome()==='cellar'),water:mis?.ci===4?null:waterMesh,shadows:ST.sh?atmosphere.shadows(objects.concat(actors),height,!!NIGHT):null};
+ const frame=renderer.draw(map,x,y,w,h,dw,dh,mapSeed||0,flat,mask,cache,actorMesh,fx);
  if(!frame)throw Error('Terrain context unavailable');
  ctx.drawImage(frame,sx,sy,dw,dh);drawnBuildings=new Set(objects);drawnDecor=new Set(decors);drawnActors=new Set(actors);ready=true;return true;
  }catch(err){failed=true;renderer?.dispose();renderer=null;label();console.warn('[3D terrain fallback]',err);return false}
