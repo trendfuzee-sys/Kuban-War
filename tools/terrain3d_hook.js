@@ -1,11 +1,11 @@
 /* KW 3D terrain integration: no changes to simulation or network state. */
 (()=>{
  let angle=0,tilt=1,qualityLevel=null;const adaptive=window.KWQuality3D.adaptive();try{const saved=localStorage.getItem('kw.3d.quality');if(saved!==null&&/^[0-3]$/.test(saved))qualityLevel=Number(saved)}catch(_){}
- let enabled=false,renderer=null,failed=false,ready=false,cache=null,signature='',lastMap=null,waterMap=null,waterMesh=null,drawnBuildings=new Set(),drawnDecor=new Set(),drawnActors=new Set(),drawnShips=new Set();
+ let enabled=true,renderer=null,failed=false,ready=false,cache=null,signature='',lastMap=null,waterMap=null,waterMesh=null,drawnBuildings=new Set(),drawnDecor=new Set(),drawnActors=new Set(),drawnShips=new Set();
  window.KW3DShip=e=>ready&&drawnShips.has(e);
  window.KW3DActor=e=>ready&&drawnActors.has(e);
  window.KW3DBuilding=e=>ready&&drawnBuildings.has(e);window.KW3DDecor=e=>ready&&drawnDecor.has(e);
- try{enabled=localStorage.getItem('kw.terrain3d')==='1'}catch(_){}
+ 
  const toggle=document.createElement('button');toggle.type='button';toggle.className='b';toggle.style.cssText='position:fixed;right:12px;top:50px;z-index:8;font-size:12px;padding:5px 9px';toggle.hidden=true;
  function label(){toggle.textContent=enabled&&!failed?'Графика: 3D (тест)':'Графика: 2D'}
  label();document.body.append(toggle);
@@ -20,8 +20,8 @@
  window.KWCameraMargin=()=>ready&&(angle||tilt!==1)?Math.hypot(W,H)/Z:0;
  const priorScroll=scrollCam;scrollCam=function(dt){if(!ready||(!angle&&tilt===1))return priorScroll(dt);const x=cam.x,y=cam.y;priorScroll(dt);const dx=cam.x-x,dy=(cam.y-y)/tilt,c=Math.cos(angle),s=Math.sin(angle);cam.x=x+c*dx+s*dy;cam.y=y-s*dx+c*dy;clampC()};
  
- toggle.onclick=()=>{enabled=failed||!enabled;failed=false;ready=false;adaptive.reset();if(!enabled&&renderer){renderer.dispose();renderer=null}try{localStorage.setItem('kw.terrain3d',enabled?'1':'0')}catch(_){}label()};
- const oldDraw=draw;draw=function(...args){toggle.hidden=!run||paused;controls.hidden=toggle.hidden||!enabled||failed;controls.style.display=controls.hidden?'none':'flex';return oldDraw(...args)};
+ toggle.onclick=()=>{enabled=true;failed=false;ready=false;adaptive.reset();if(!enabled&&renderer){renderer.dispose();renderer=null}try{localStorage.setItem('kw.terrain3d',enabled?'1':'0')}catch(_){}label()};
+ const oldDraw=draw;draw=function(...args){toggle.hidden=true;controls.hidden=!run||paused||!enabled||failed;controls.style.display=controls.hidden?'none':'flex';return oldDraw(...args)};
  const oldMenu=menu;menu=function(...args){toggle.hidden=true;controls.hidden=true;controls.style.display='none';return oldMenu(...args)};
  window.KWDrawTerrain3D=function(ctx,map,x,y,w,h,sx,sy,dw,dh){
  ready=false;if(!enabled||failed||!map)return false;
