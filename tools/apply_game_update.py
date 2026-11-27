@@ -1,6 +1,18 @@
 import sys, zipfile, pathlib, shutil
 base, update, output = map(pathlib.Path, sys.argv[1:])
 overlay = update / "files"
+import subprocess
+html = overlay / 'resources/app/game/voyna_za_kuban.html'
+if html.exists():
+    subprocess.run([sys.executable, str(pathlib.Path(__file__).with_name('net_fix_112.py')), str(html)], check=True)
+    import re
+    scripts = re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', html.read_text(encoding='utf-8'), re.S|re.I)
+    if not scripts:
+        raise RuntimeError('No game scripts')
+    check = output.with_suffix('.syntax.js')
+    check.write_text('\n'.join(scripts), encoding='utf-8')
+    subprocess.run(['node', '--check', str(check)], check=True)
+    check.unlink()
 with zipfile.ZipFile(base) as src:
     names = src.namelist()
     roots = [n[:-len("resources/app/game/voyna_za_kuban.html")] for n in names if n.endswith("resources/app/game/voyna_za_kuban.html")]
