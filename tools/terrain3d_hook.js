@@ -31,8 +31,9 @@
  const margin=160+((angle||tilt!==1)?Math.hypot(w,h):0),visible=o=>o.x>=x-margin&&o.x<=x+w+margin&&o.y>=y-margin&&o.y<=y+h+margin;
  const objects=E.filter(e=>e.k==='b'&&!e.dead&&e.pg>=1&&['h','b','s','t','w','l'].includes(e.ty)&&visible(e)&&known(e));
  const decors=DEC.filter(d=>visible(d));
- const key=objects.map(e=>[e.id,e.x,e.y,e.r,e.race,e.ty,e.team].join(',')).join(';')+'|'+decors.map(d=>[d.x,d.y,d.t,d.s].join(',')).join(';');
- if(lastMap!==map||signature!==key){cache=window.KWEnvironment3D.build(objects,decors,(a,b)=>window.KWTerrain3D.elevation(a,b,map.width,map.height,mapSeed||0,flat||mask(a,b)),!!layout?.river,map.width,map.height);signature=key;lastMap=map}
+ const theme=terrainBiome(),props=(layout?.props||[]).filter(visible),obstacles=(layout?.obstacles||[]).filter(visible);
+ const key=theme+'|'+props.map(p=>[p.x,p.y,p.type,p.variant,p.name].join(',')).join(';')+'|'+obstacles.map(o=>[o.x,o.y,o.rx,o.ry].join(',')).join(';')+'|'+objects.map(e=>[e.id,e.x,e.y,e.r,e.race,e.ty,e.team].join(',')).join(';')+'|'+decors.map(d=>[d.x,d.y,d.t,d.s].join(',')).join(';');
+ if(lastMap!==map||signature!==key){cache=window.KWEnvironment3D.build(objects,decors,(a,b)=>window.KWTerrain3D.elevation(a,b,map.width,map.height,mapSeed||0,flat||mask(a,b)),!!layout?.river,map.width,map.height);const landmarks=window.KWMission3D.build(props,obstacles,theme,(a,b)=>window.KWTerrain3D.elevation(a,b,map.width,map.height,mapSeed||0,flat||mask(a,b)),()=>true);const combined=new Float32Array(cache.length+landmarks.length);combined.set(cache);combined.set(landmarks,cache.length);cache=combined;signature=key;lastMap=map}
  const actors=E.filter(e=>e.k==='u'&&!e.dead&&!e.ship&&visible(e)&&seen(e)).slice(0,350);
  const actorMesh=window.KWActors3D.build(actors,(a,b)=>window.KWTerrain3D.elevation(a,b,map.width,map.height,mapSeed||0,flat||mask(a,b)),t);
  const atmosphere=window.KWAtmosphere3D;
