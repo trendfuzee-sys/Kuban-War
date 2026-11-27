@@ -25,11 +25,29 @@ const stage=document.createElement('div');stage.className='kw-duet-stage';stage.
 const slots=['left','right'].map(side=>{const el=document.createElement('figure'),img=document.createElement('img'),label=document.createElement('figcaption');el.className='kw-duet-slot';el.dataset.side=side;el.hidden=true;img.alt='';img.decoding='async';el.append(img,label);stage.append(el);return {el,img,label,who:null,path:null}});
 dialog.append(stage);
 const article=dialog.querySelector('article');const resize=()=>dialog.style.setProperty('--kw-duet-height',article.offsetHeight+'px');if(typeof ResizeObserver==='function')new ResizeObserver(resize).observe(article);
-function portrait(who){const k=key(who),m=window.KWDialoguePortraits||{},v=m[k],entry=v?.placeholder_only?m[v.fallback]:v;return entry?.portraits?.neutral||(oldPortrait[k]?'img/'+oldPortrait[k]+'/hero.png.png':null)}
+function emotionOrder(mood,txt){
+ const m=String(mood||'').toLowerCase().replace(/ё/g,'е'),t=String(txt||'').toLowerCase();
+ if(/горьк.*усмеш|насмеш|ирони|сарказ/.test(m))return ['smirk','sad'];
+ if(/угроз/.test(m))return ['threatening','angry','commanding'];
+ if(/раздраж|ярост|злост|резко|досад|нетерпел/.test(m))return ['angry','threatening'];
+ if(/сомнен|сомнева|подозр|неувер|тревог|тревож|напряж/.test(m))return ['suspicious','wary','thinking','surprised'];
+ if(/самоувер|горд/.test(m))return ['proud','smirk','determined'];
+ if(/гореч|печал|устал|отчаян/.test(m))return ['sad','tired','wounded'];
+ if(/страх|испуг|растерян|удив/.test(m))return ['surprised','wary','suspicious'];
+ if(/боль|усили|ранен/.test(m))return ['wounded','fading','sad','tired'];
+ if(/решит|приказ|команд/.test(m))return ['determined','commanding','hopeful'];
+ if(/надежд|радост/.test(m))return ['hopeful','happy','smirk'];
+ if(/холод|сдержан|тихо/.test(m))return ['neutral'];
+ if(/^(что\?|как\?|не может быть|серьезно\?)/.test(t))return ['surprised'];
+ return ['neutral'];
+}
+function portrait(who,line){const k=key(who),m=window.KWDialoguePortraits||{},v=m[k],entry=v?.placeholder_only?m[v.fallback]:v,images=entry?.portraits||{};for(const e of [...emotionOrder(line?.[2],line?.[1]),'neutral'])if(images[e])return images[e];return oldPortrait[k]?'img/'+oldPortrait[k]+'/hero.png.png':null}
+function lastLine(lines,n,who){for(let i=n;i>=0;i--)if(lines[i]?.[0]===who)return lines[i];return null}
+window.KWDialogueEmotion={emotionOrder,lastLine};
 function assign(lines,n,preferred){const now=lines[n]?.[0];if(!now)return [null,null];const known=lines.map(l=>l[0]).filter(w=>key(w));const protagonist=known.find(w=>key(w)===preferred);const partner=[...lines.slice(0,n).reverse(),...lines.slice(n+1)].map(l=>l[0]).find(w=>w!==now&&key(w));
 if(key(now)===preferred)return [now,partner||null];
 if(protagonist)return [protagonist,now];
 const first=known[0];return now===first?[now,partner||null]:[partner||null,now]}
-function updateSlot(slot,who,active){slot.el.hidden=!who;slot.el.classList.toggle('active',!!who&&active);slot.label.textContent=who||'';const path=portrait(who);if(slot.who!==who||slot.path!==path){slot.who=who;slot.path=path;slot.img.hidden=!path;if(path){slot.img.onerror=()=>{slot.img.hidden=true};slot.img.src=path}else slot.img.removeAttribute('src')}}
-const previous=paintTalk;paintTalk=function(...args){const result=previous(...args);if(!talk)return result;const who=talk.lines[talk.n]?.[0],preferred=hero[CAM[scenario?.id??talk.id]?.p],pair=assign(talk.lines,talk.n,preferred);for(let i=0;i<2;i++)updateSlot(slots[i],pair[i],pair[i]===who);resize();return result};
+function updateSlot(slot,who,active,line){slot.el.hidden=!who;slot.el.classList.toggle('active',!!who&&active);slot.label.textContent=who||'';const path=portrait(who,line);if(slot.who!==who||slot.path!==path){slot.who=who;slot.path=path;slot.img.hidden=!path;if(path){slot.img.onerror=()=>{const neutral=portrait(who,null);if(neutral&&neutral!==path&&slot.img.getAttribute('src')===path){slot.img.src=neutral}else slot.img.hidden=true};slot.img.src=path}else slot.img.removeAttribute('src')}}
+const previous=paintTalk;paintTalk=function(...args){const result=previous(...args);if(!talk)return result;const who=talk.lines[talk.n]?.[0],preferred=hero[CAM[scenario?.id??talk.id]?.p],pair=assign(talk.lines,talk.n,preferred);for(let i=0;i<2;i++)updateSlot(slots[i],pair[i],pair[i]===who,lastLine(talk.lines,talk.n,pair[i]));resize();return result};
 })();
