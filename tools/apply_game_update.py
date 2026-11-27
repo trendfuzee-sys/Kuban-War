@@ -42,11 +42,22 @@ if html.exists():
     from install_dialogue_art import install_dialogue_art
     install_dialogue_art(html, update)
     dialogue=pathlib.Path(__file__).with_name('dialogue_scene.js')
-    subprocess.run(['node','--check',str(dialogue)],check=True)
+    voice=pathlib.Path(__file__).with_name('voice_continuity.js')
+    for module in (dialogue, voice):
+        subprocess.run(['node','--check',str(module)],check=True)
+    subprocess.run(['node',str(pathlib.Path(__file__).with_name('test_dialogue_voice.js'))],check=True)
     page=html.read_text(encoding='utf-8')
+    # The base release can still contain previously installed portrait art.
+    # Restore its manifest script reference even if no new archive is supplied.
+    manifest_tag='<script src="dialogue-art/manifest.js"></script>'
+    if manifest_tag not in page:
+        with zipfile.ZipFile(base) as previous:
+            if any(name.endswith('resources/app/game/dialogue-art/manifest.js') for name in previous.namelist()):
+                if page.count('</body>')!=1: raise RuntimeError('Unexpected HTML body')
+                page=page.replace('</body>',manifest_tag+'\n</body>',1)
     import re
     # Replace the previous embedded module rather than retaining stale code.
-    tag = '<script>/* KW_DIALOGUE_DUET_140 */\n'+dialogue.read_text(encoding='utf-8')+'\n</script>'
+    tag = '<script>/* KW_DIALOGUE_DUET_140 */\n'+dialogue.read_text(encoding='utf-8')+'\n'+voice.read_text(encoding='utf-8')+'\n</script>'
     pattern = r'<script>\s*/\* KW_DIALOGUE_DUET_140 \*/.*?</script>'
     matches = list(re.finditer(pattern, page, re.S))
     if len(matches) > 1:
