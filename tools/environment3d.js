@@ -9,17 +9,23 @@ function batch(){const data=[];
  function box(x,y,z,w,d,h,col){const a=[x-w/2,y-d/2,z],b=[x+w/2,y-d/2,z],c=[x+w/2,y+d/2,z],e=[x-w/2,y+d/2,z],top=p=>[p[0],p[1],p[2]+h];quad(a,b,top(b),top(a),col);quad(b,c,top(c),top(b),col);quad(c,e,top(e),top(c),col);quad(e,a,top(a),top(e),col);quad(top(a),top(b),top(c),top(e),col)}
  function cone(x,y,z,r,h,col,segments=7,top=0){for(let i=0;i<segments;i++){const a=i*2*Math.PI/segments,b=(i+1)*2*Math.PI/segments;const p=[x+Math.cos(a)*r,y+Math.sin(a)*r,z],q=[x+Math.cos(b)*r,y+Math.sin(b)*r,z],s=[x+Math.cos(a)*top,y+Math.sin(a)*top,z+h],t=[x+Math.cos(b)*top,y+Math.sin(b)*top,z+h];quad(p,q,t,s,col);if(top)tri(s,t,[x,y,z+h],col)}}
  function roof(x,y,z,w,d,h,col){const a=[x-w/2,y-d/2,z],b=[x+w/2,y-d/2,z],c=[x+w/2,y+d/2,z],e=[x-w/2,y+d/2,z],p=[x,y-d/2,z+h],q=[x,y+d/2,z+h];quad(a,e,q,p,col);quad(b,c,q,p,col);tri(a,b,p,col);tri(e,c,q,col)}
- return {box,cone,roof,array:()=>new Float32Array(data)};
+ return {tri,quad,box,cone,roof,array:()=>new Float32Array(data)};
 }
 function building(b,e,z){const r=e.r||28,x=e.x,y=e.y,p=colors[e.race]||colors.kaz,h=r*(e.ty==='t'?1.9:.85),w=r*1.65,d=r*1.35;
  if(e.ty==='w'){b.box(x,y,z,r*1.8,r*.65,r*.8,p[0]);return}
- if(e.race==='mon'&&e.ty!=='t'){b.cone(x,y,z,r*.85,h,p[0],10,r*.85);b.cone(x,y,z+h,r*.94,r*.65,p[1],10);b.box(x,y+r*.78,z,9,3,h*.65,p[2]);return}
+ if(e.race==='mon'&&e.ty!=='t'){b.cone(x,y,z,r*.85,h,p[0],10,r*.85);b.cone(x,y,z+h,r*.94,r*.65,p[1],12);for(let i=0;i<8;i++){const a=i*Math.PI/4;b.box(x+Math.cos(a)*r*.80,y+Math.sin(a)*r*.80,z+h*.14,2,2,h*.74,'#927b56')}b.cone(x,y,z+h+r*.65,2,r*.12,'#b59a62',6);b.box(x,y+r*.78,z,9,3,h*.65,p[2]);return}
  b.box(x,y,z,w,d,h,p[0]);
- if(e.race==='nov'){b.box(x,y,z+h,w*1.1,d*1.08,r*.13,p[1]);b.box(x-r*.35,y,z+h+r*.13,r*.18,r*.21,r*.35,p[2]);}
+ b.box(x,y,z,w*1.04,d*1.04,Math.max(2,r*.12),'#625d51');
+ if(e.race==='kaz'){for(const k of [-1,1]){b.box(x+k*w*.44,y+d/2+1,z,3,3,h,'#684d35');b.box(x+k*w*.44,y-d/2-1,z,3,3,h,'#684d35');}
+ for(let k=1;k<5;k++)b.box(x,y+d/2+.5,z+h*k/5,w,1.2,1.1,'#938069');
+ for(const k of [-1,1]){b.box(x+k*w*.31,y+d/2+1,z+h*.40,w*.18,2,h*.30,'#493e30');b.box(x+k*w*.31,y+d/2+2,z+h*.43,w*.13,1,h*.24,'#78929a');}}
+ if(e.race==='nov'){for(let k=0;k<4;k++){const a=x-w*.37+k*w*.24;b.box(a,y+d/2+1,z+h*(.12+(k%2)*.14),w*.15,2,h*.21,k%2?'#4c4840':'#948d78');}b.box(x+w*.37,y+d/2+1,z+h*.5,w*.16,3,h*.20,'#302e2a');}
+ if(e.race==='bog'){for(let k=1;k<3;k++)b.box(x,y+d/2+1,z+h*k/3,w,2,2,'#77766d');for(const sign of [-1,1])b.box(x+sign*w*.43,y,z,w*.08,d*1.02,h,'#817d70');}
+ if(e.race==='nov'){b.box(x-w*.19,y,z+h,w*.70,d*1.08,r*.13,p[1]);b.box(x+w*.36,y-d*.19,z+h,w*.35,d*.68,r*.11,'#62594b');b.box(x-r*.35,y,z+h+r*.13,r*.18,r*.21,r*.35,p[2]);}
  else if(e.race==='bog'){b.box(x,y,z+h,w*1.08,d*1.08,r*.16,p[1]);for(let k=-1;k<=1;k++)b.box(x+k*w*.28,y+d/2+1,z+h*.45,w*.16,2,h*.2,'#536c73')}
- else b.roof(x,y,z+h,w*1.12,d*1.12,r*.55,p[1]);
+ else {b.roof(x,y,z+h,w*1.12,d*1.12,r*.55,p[1]);b.box(x,y,z+h+r*.55,2,d*1.15,2,'#684b3b');b.box(x-w*.25,y-d*.2,z+h+r*.32,r*.15,r*.15,r*.40,'#8e7965')}
  b.box(x,y+d/2+1,z,Math.max(5,w*.22),2,h*.62,p[2]);
- const team=e.team===0?'#64a4ca':e.team===1?'#bd5345':'#b2a46c';b.box(x+w*.33,y-d*.28,z+h,2,2,r*.65,'#51412d');b.box(x+w*.33+5,y-d*.28,z+h+r*.49,10,1,7,team);
+ const team=e.race==='nov'?'#181818':e.team===0?'#64a4ca':e.team===1?'#bd5345':'#b2a46c';b.box(x+w*.33,y-d*.28,z+h,2,2,r*.65,'#51412d');b.box(x+w*.33+5,y-d*.28,z+h+r*.49,10,1,7,team);
 }
 function decor(b,o,z){const s=o.s||1,x=o.x,y=o.y;if(o.t===0||o.t===1||o.t===4){const h=(o.t===4?17:38)*s;b.cone(x,y,z,3*s,h*.65,'#654c35',6,2*s);if(o.t===1){for(let i=0;i<3;i++)b.cone(x,y,z+h*.25+i*h*.19,(15-i*3)*s,h*.55,['#355a43','#426b4c','#52764e'][i],7)}else{b.cone(x,y,z+h*.27,15*s,h*.58,'#477044',8,8*s);b.cone(x-3*s,y,z+h*.65,10*s,h*.44,'#64844c',7)}}else if(o.t===3){b.cone(x,y,z,10*s,9*s,'#85847c',6,5*s)}else{b.cone(x,y,z,4*s,12*s,'#6d8b45',5,1*s);b.cone(x,y,z+10*s,4*s,3*s,'#d7ad49',6)}}
 function bridge(b,w,h){const x=870*w/1792,y=390*h/856,dx=86*w/1792,dy=180*h/856;b.box(x,y,0,dx,dy,4,'#a48653');for(const sign of [-1,1]){b.box(x+sign*(dx/2-3),y,4,4,dy,5,'#59422e');for(let i=0;i<5;i++)b.box(x+sign*(dx/2-3),y-dy/2+i*dy/4,4,5,5,12,'#624b32')}}
