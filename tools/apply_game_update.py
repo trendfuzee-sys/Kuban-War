@@ -36,6 +36,7 @@ if html.exists():
             html.write_text(page,encoding="utf-8")
     from install_unit_art import install_unit_art
     install_unit_art(html, update)
+    subprocess.run([sys.executable, str(pathlib.Path(__file__).with_name('campaign_fix_1211.py')), str(html)], check=True)
     import re
     scripts = re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', html.read_text(encoding='utf-8'), re.S|re.I)
     if not scripts:
