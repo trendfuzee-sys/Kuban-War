@@ -24,7 +24,7 @@ class Launcher : Form {
  static readonly string Data=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"KubanLauncher");
  readonly HttpClient http=new HttpClient(); readonly JavaScriptSerializer json=new JavaScriptSerializer(){MaxJsonLength=16000000};
  readonly Label status=new Label(), folder=new Label(), version=new Label();
- readonly Button play=new Button(), check=new Button(), choose=new Button(), pause=new Button();
+ readonly Button play=new Button(), check=new Button(), choose=new Button(), pause=new Button(); readonly CheckBox auto=new CheckBox(){Text="Автоматически скачивать обновления",Width=500,Checked=true};
  readonly ProgressBar progress=new ProgressBar(); readonly RichTextBox news=new RichTextBox(), changes=new RichTextBox();
  string root, exeName="Война за Кубань.exe"; Manifest manifest; Release release; List<Entry> pending=new List<Entry>();
  CancellationTokenSource cancel; bool busy, online; Process game;
@@ -41,17 +41,17 @@ class Launcher : Form {
   var stack=new FlowLayoutPanel(){Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown,WrapContents=false,Padding=new Padding(24),AutoScroll=true};
   home.Controls.Add(stack); foreach(var l in new[]{version,status}){l.Width=650;l.Height=55;stack.Controls.Add(l);} progress.Width=620;progress.Height=22;stack.Controls.Add(progress);
   Setup(play,"Скачать игру",stack); Setup(check,"Проверить файлы",stack);Setup(pause,"Приостановить",stack);
-  var settings=new FlowLayoutPanel(){Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown,Padding=new Padding(20)};s.Controls.Add(settings);folder.Width=650;folder.Height=65;settings.Controls.Add(folder);Setup(choose,"Выбрать папку игры",settings);
+  var settings=new FlowLayoutPanel(){Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown,Padding=new Padding(20)};s.Controls.Add(settings);folder.Width=650;folder.Height=65;settings.Controls.Add(folder);Setup(choose,"Выбрать папку игры",settings);settings.Controls.Add(auto); string pref=Path.Combine(Data,"auto.txt");auto.Checked=!File.Exists(pref)||File.ReadAllText(pref)!="0";auto.CheckedChanged+=(a,b)=>File.WriteAllText(pref,auto.Checked?"1":"0");
   foreach(var box in new[]{news,changes}){box.Dock=DockStyle.Fill;box.ReadOnly=true;box.BackColor=Color.FromArgb(34,39,40);box.ForeColor=Color.Wheat;box.BorderStyle=BorderStyle.None;}
   n.Controls.Add(news);u.Controls.Add(changes);
   choose.Click+=async (a,b)=>{using(var d=new FolderBrowserDialog()){d.Description="Выберите папку с EXE или пустую папку для установки";if(d.ShowDialog()!=DialogResult.OK)return;root=d.SelectedPath;File.WriteAllText(cfg,root);await RefreshGame();}};
   check.Click+=async(a,b)=>await RefreshGame();pause.Click+=(a,b)=>{if(cancel!=null)cancel.Cancel();};play.Click+=async(a,b)=>{if(online && pending.Count>0)await Install();else if(File.Exists(GameExe())){try{game=Process.Start(new ProcessStartInfo(GameExe()){WorkingDirectory=root});}catch(Exception e){status.Text=e.Message;}}else await RefreshGame();};
-  Shown+=async(a,b)=>await RefreshGame();FormClosing+=(a,b)=>{if(busy){b.Cancel=true;status.Text="Сначала завершите или приостановите операцию.";if(cancel!=null)cancel.Cancel();}};
+  Shown+=async(a,b)=>{await RefreshGame();if(auto.Checked && online && pending.Count>0 && File.Exists(GameExe()) && !Running())await Install();};FormClosing+=(a,b)=>{if(busy){b.Cancel=true;status.Text="Сначала завершите или приостановите операцию.";if(cancel!=null)cancel.Cancel();}};
   news.Text="Новости пока не загружены."; changes.Text="Обновления пока не загружены.";UpdateUI();
  }
  void Setup(Button b,string t,Control p){b.Text=t;b.Width=300;b.Height=43;b.FlatStyle=FlatStyle.Flat;b.BackColor=Color.FromArgb(91,70,43);b.ForeColor=Color.Wheat;p.Controls.Add(b);}
  string GameExe(){return Path.Combine(root,exeName);}
- void UpdateUI(){folder.Text=root;choose.Enabled=check.Enabled=!busy;pause.Enabled=busy && cancel!=null;play.Enabled=!busy && (File.Exists(GameExe()) || online);play.Text=online&&pending.Count>0?(File.Exists(GameExe())?"Обновить / восстановить":"Скачать игру"):"Играть";if(!online&&!File.Exists(GameExe()))play.Text="Скачать игру";}
+ void UpdateUI(){folder.Text=root;choose.Enabled=check.Enabled=!busy;pause.Enabled=busy && cancel!=null;play.Enabled=!busy;play.Text=online&&pending.Count>0?(File.Exists(GameExe())?"Обновить / восстановить":"Скачать игру"):"Играть";if(!online&&!File.Exists(GameExe()))play.Text="Повторить проверку";}
  static string Safe(string basePath,string relative){
   if(String.IsNullOrWhiteSpace(relative)||relative.Contains(":")||relative.Contains("\\")||relative.StartsWith("/")||relative.Split('/').Any(p=>p==""||p=="."||p==".."||p.EndsWith(".")||p.EndsWith(" ")))throw new Exception("Недопустимый путь");
   string b=Path.GetFullPath(basePath).TrimEnd(Path.DirectorySeparatorChar)+Path.DirectorySeparatorChar;string pth=Path.GetFullPath(Path.Combine(b,relative.Replace('/',Path.DirectorySeparatorChar)));
@@ -74,7 +74,7 @@ class Launcher : Form {
    var seen=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
    foreach(var e in manifest.files){Safe(root,e.path);if(!seen.Add(e.path)||e.size<0||!System.Text.RegularExpressions.Regex.IsMatch(e.sha256??"","^[a-f0-9]{64}$"))throw new Exception("Некорректная запись манифеста");AssetUrl(e.asset);}
    pending=await Task.Run(()=>manifest.files.Where(e=>!Valid(Safe(root,e.path),e)).ToList());
-   online=true;version.Text="Доступная версия: "+manifest.version;status.Text=pending.Count==0?"Игра актуальна.":String.Format("К загрузке: {0} файлов • {1:F1} МБ",pending.Count,pending.Sum(e=>e.size)/1048576.0);
+   online=true;version.Text=(pending.Count==0?"Установленная версия: ":"Доступная версия: ")+manifest.version;status.Text=pending.Count==0?"Игра актуальна.":String.Format("К загрузке: {0} файлов • {1:F1} МБ",pending.Count,pending.Sum(e=>e.size)/1048576.0);
   }catch(Exception e){status.Text="Обновления недоступны: "+e.Message;version.Text=File.Exists(GameExe())?"Офлайн • установленная игра":"Нет опубликованной сборки";}
   finally{busy=false;UpdateUI();}
  }
