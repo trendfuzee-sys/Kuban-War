@@ -55,7 +55,53 @@ function assign(lines,n,preferred){
  return [left,partner||null];
 }
 function updateSlot(slot,who,active,line){slot.el.hidden=!who;slot.el.classList.toggle('active',!!who&&active);slot.label.textContent=who||'';const path=portrait(who,line);if(slot.who!==who||slot.path!==path){slot.who=who;slot.path=path;slot.img.hidden=!path;if(path){slot.img.onerror=()=>{const neutral=portrait(who,null);if(neutral&&neutral!==path&&slot.img.getAttribute('src')===path){slot.img.src=neutral}else slot.img.hidden=true};slot.img.src=path}else slot.img.removeAttribute('src')}}
-const previous=paintTalk;paintTalk=function(...args){const result=previous(...args);if(!talk)return result;const who=talk.lines[talk.n]?.[0],preferred=hero[CAM[scenario?.id??talk.id]?.p],pair=assign(talk.lines,talk.n,preferred);for(let i=0;i<2;i++)updateSlot(slots[i],pair[i],(pair[i]===who||!!key(who)&&key(pair[i])===key(who)),lastLine(talk.lines,talk.n,pair[i]));resize();return result};
+const previous=paintTalk;paintTalk=function(...args){const result=previous(...args);if(!talk)return result;const who=talk.lines[talk.n]?.[0],preferred=hero[CAM[scenario?.id??talk.id]?.p],pair=assign(talk.lines,talk.n,preferred);if(Math.floor(talk.n/4)%2&&pair[0]&&pair[1])pair.reverse();for(let i=0;i<2;i++)updateSlot(slots[i],pair[i],(pair[i]===who||!!key(who)&&key(pair[i])===key(who)),lastLine(talk.lines,talk.n,pair[i]));resize();return result};
 // Older portrait renderer references the current wrapper's token.
 paintTalk.token=0;
+
+/* Campaign presentation and optional civilian conversations. */
+const polish=document.createElement('style');
+const cursor=(svg,x,y)=>'url("data:image/svg+xml,'+encodeURIComponent(svg)+'") '+x+' '+y;
+const arrow=cursor('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><path d="M3 2L5 27L12 19L19 28L24 24L16 15L27 12Z" fill="#ead39b" stroke="#382719" stroke-width="2" stroke-linejoin="round"/><path d="M5 5L22 12L12 14Z" fill="#fff3cd"/></svg>',3,2);
+const hand=cursor('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><path d="M11 17V5Q14 1 17 5V13L21 12L27 16V23L22 29H12L4 18Q4 14 8 15Z" fill="#ecd49a" stroke="#39291b" stroke-width="2"/></svg>',14,4);
+polish.textContent='html,body{cursor:'+arrow+',auto}button:not(:disabled),[role=button],a,select{cursor:'+hand+',pointer!important}#cv:not([style*="cursor"]){cursor:'+arrow+',auto}'+
+'#top,#pan{background:linear-gradient(180deg,#655440 0%,#30291f 12%,#1d211e 55%,#332b20 100%);box-shadow:inset 0 2px #e6ca8540,inset 0 -3px #090a09,0 4px 14px #0008}'+
+'#obj,.chip,.pt,#mm{border-color:#a48b56;box-shadow:inset 0 2px #f4d28a24,inset 0 -3px #0008,0 3px 8px #0009;border-radius:6px}'+
+'.b:not(:disabled):not(.on){background:linear-gradient(180deg,#5b4b35,#332b20 48%,#231e18);box-shadow:inset 0 1px #e9c98766,inset 0 -2px #0008,0 3px 0 #111,0 4px 8px #0005}'+
+'.b:hover:not(:disabled){filter:brightness(1.17)}.b:active:not(:disabled){transform:translateY(2px);box-shadow:inset 0 2px 5px #0008}'+
+'.hp{box-shadow:inset 0 2px 4px #000a}.hp i{box-shadow:inset 0 2px #fff4,inset 0 -2px #0005}'+
+'#kw-civil-talk{position:fixed;bottom:12.4rem;right:1rem;z-index:4;max-width:45vw}#kw-civil-talk[hidden]{display:none!important}';
+document.head.append(polish);
+const edits=new Map([
+['Пускай между собой договорятся, кто из них главный бухгалтер. Мы никому платить не будем. Зато надо сделать так, чтобы сюда больше не заходили без приглашения.','Пусть сначала между собой договорятся. Мы им ничего не должны. Лучше укрепим вход, а то опять кто-нибудь заявится.'],
+['Можем укрепить проходы, наладить добычу ресурсов и организовать обучение. Но понадобится время и деньги.','Можем укрепить проходы, наладить добычу и обучить ребят. Только это не за один день делается. И денег понадобится немало.'],
+['Хорошо, идём вместе. Нам нужно оборудование, не очередная бессмысленная война за двор.','Ладно, идём вместе. Заберём оборудование и домой. Мне ещё одной драки за двор не хватало.'],
+['Если откроешь дверь, назад уже не отыграешь.','Богдан, подумай. Откроешь дверь — обратно уже ничего не вернёшь.'],
+['Я слышу. Просто не знаю, как признаться, что сам его боюсь.','Да слышу я. Просто... я сам его боюсь, понимаешь?'],
+['Проверим, если будет время.','Ладно, запомню. Если будет время, загляну.']
+]);
+const originalShow=showTalk;
+showTalk=function(lines,done){return originalShow(lines.map(l=>Array.isArray(l)&&edits.has(l[1])?[l[0],edits.get(l[1]),...l.slice(2)]:l),done)};
+const btn=document.createElement('button');btn.id='kw-civil-talk';btn.className='b';btn.hidden=true;document.body.append(btn);
+const conversations=[
+ {name:'Хлебороб',lines:['С утра на ногах. Хорошо хоть сегодня дождя нет.','Да куда нам уходить? Здесь дом, земля. Вот бы только спокойно дожить до вечера.']},
+ {name:'Сосед',lines:['Здорово. Ты к нам по делу или просто мимо шёл?','Если увидишь наших на дороге, скажи, чтобы домой возвращались. Неспокойно нынче.']},
+ {name:'Старик',lines:['Эх, раньше по этой дороге спокойно ходили.','Береги себя. Землю ещё вспашем, а человека не вернёшь.']},
+ {name:'Торговец',lines:['Привет. Торговля нынче совсем встала.','Я бы и рад товар привезти, да дороги неспокойные.'] }
+];
+const visits=new WeakMap();let candidate=null;
+function nearby(){
+ if(!run||paused||talk||IN||!document.getElementById('menu').hidden||window.kubanOnlineAlpha?.currentMatch||!scenario||scenario.finished)return null;
+ const h=E.find(u=>!u.dead&&u.team===0&&u.k==='u'&&u.i===9);
+ if(!h)return null;
+ let best=null,dist=135;
+ for(const u of E){if(!u.dead&&u.civilian&&u.village&&u.civicRole!=='child'){const d=D(h,u);if(d<dist){best=u;dist=d}}}
+ return best;
+}
+btn.onclick=()=>{const u=nearby();if(!u)return;const v=visits.get(u)||0;visits.set(u,v+1);const c=conversations[Math.abs(Number(u.id)||0)%conversations.length],who=castSpeaker(scenario.id);
+ const lines=v===0?[[c.name,c.lines[0],'Спокойно'],[who,'Как у вас тут? Всё нормально?','Сдержанно'],[c.name,c.lines[1],'С тревогой'],[who,'Понял. Берегите себя.','Спокойно']]:[[c.name,'Опять ты? Рад, что всё ещё цел.','Спокойно'],[who,'И вы держитесь.','Спокойно']];
+ btn.hidden=true;showTalk(lines);
+};
+setInterval(()=>{candidate=nearby();btn.hidden=!candidate;if(candidate)btn.textContent='Поговорить с жителем';},250);
+
 })();
