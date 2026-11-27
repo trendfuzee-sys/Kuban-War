@@ -5,6 +5,8 @@ import subprocess
 html = overlay / 'resources/app/game/voyna_za_kuban.html'
 if html.exists():
     subprocess.run([sys.executable, str(pathlib.Path(__file__).with_name('net_fix_112.py')), str(html)], check=True)
+    subprocess.run([sys.executable, str(pathlib.Path(__file__).with_name('net_fix_113.py')), str(html)], check=True)
+    subprocess.run(['node', str(pathlib.Path(__file__).with_name('test_net_113.js'))], check=True)
     import re
     scripts = re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', html.read_text(encoding='utf-8'), re.S|re.I)
     if not scripts:
