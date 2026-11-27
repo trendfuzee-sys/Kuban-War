@@ -58,4 +58,20 @@ const armyStart=start;start=function(...args){const result=armyStart(...args);ar
 const oldSiteRender=renderSite;renderSite=function(){oldSiteRender();const s=tradeSite;if(s?.kind!=='encounter')return;const el=$('trade').querySelector('article');if(!el)return;const hint=document.createElement('p');hint.textContent=s.resolved?'Вы уже приняли решение.':'Сначала расспросите собеседника бесплатно. Сделка стоит 25 золота и требует свободного места в инвентаре. Нападение исключает мирное решение.';el.querySelector('h2')?.after(hint);if(!s.resolved){const b=document.createElement('button');b.className='b';b.dataset.offer='kwAsk';b.textContent='Поговорить с предводителем';el.querySelector('footer')?.before(b)}};
 const oldSiteAction=siteAction;siteAction=function(k){const s=tradeSite,h=tradeHero;if(s?.kind!=='encounter'||!h||h.dead||D(h,s)>90||s.resolved)return oldSiteAction(k);const who=castSpeaker(scenario.id);if(k==='kwAsk'){closeSite();return showTalk([[who,'Здорово. Кто вы и что здесь делаете?','Спокойно'],[s.person,s.speech,'Настороженно'],[who,'А что знаешь о дороге впереди?','Сдержанно'],[s.person,s.hint,'Спокойно']],()=>{if(run&&!h.dead&&D(h,s)<=80)openSite(s,h)})}if(k==='encFight'){const button=$('trade').querySelector('[data-offer="encFight"]');if(button&&button.dataset.confirm!=='yes'){button.dataset.confirm='yes';button.textContent='Подтвердить нападение';return}}return oldSiteAction(k)};
 
+
+/* Main menu visual pass, without replacing existing navigation handlers. */
+const menuSkin=document.createElement('style');menuSkin.textContent=
+'body:has(#menu.kw-home:not([hidden])) #menu{background:radial-gradient(ellipse at 75% 15%,#80734a48,transparent 58%),linear-gradient(125deg,#101715f5,#202822fa 48%,#100e0df5)!important}'+
+'#menu.kw-home #mw{width:min(1120px,94vw);padding:clamp(16px,3vw,42px);border:1px solid #aa925b;border-radius:12px;background:linear-gradient(140deg,#343b30e8,#141b17f5 42%,#25231df5);box-shadow:0 20px 70px #000b,inset 0 0 0 3px #151b17,inset 0 1px #e4d3a355}'+
+'#menu.kw-home h1.T{font-family:Georgia,serif;letter-spacing:.085em;text-shadow:0 3px #382717,0 6px 16px #000;color:#f2d394}'+
+'#menu.kw-home h1.T small{letter-spacing:.23em;color:#e3c18a}'+
+'#menu.kw-home .tabs{gap:8px;display:flex;flex-wrap:wrap;justify-content:center;padding:12px 0;border-top:1px solid #9a80584d;border-bottom:1px solid #9a80584d}'+
+'#menu.kw-home .tabs .b{min-height:44px;flex:1 1 125px;font-weight:bold;border:1px solid #a48a55;background:linear-gradient(#4e5140,#282e26 47%,#191e19)!important;color:#f2e3c1;box-shadow:inset 0 1px #fff3,0 3px 0 #090e0b,0 5px 10px #0008}'+
+'#menu.kw-home .tabs .b.on,#menu.kw-home .tabs .b:hover{background:linear-gradient(#b79a5e,#655331 52%,#3b3020)!important;color:#fff4d0;border-color:#e4c58a}'+
+'#menu.kw-home .card{background:linear-gradient(135deg,#313a30d9,#151d19e8);border:1px solid #82744e;border-radius:8px;box-shadow:inset 0 1px #d5bc8533,0 4px 16px #0006}'+
+'#menu.kw-home .kw-home-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:18px;padding-top:12px;border-top:1px solid #a48a5555;color:#c0bba9;font:12px Arial}'+
+'#menu.kw-home .kw-home-footer button{min-width:120px}';
+document.head.append(menuSkin);
+const skinMenu=menu;menu=function(...args){const result=skinMenu(...args);const root=$('menu'),content=$('mw');root.classList.toggle('kw-home',!run);if(!run&&content){const footer=document.createElement('footer');footer.className='kw-home-footer';const version=document.createElement('span');version.textContent='KUBAN WAR  •  Стратегия и сюжетная кампания';footer.append(version);if(dinoEnabled){const unlocked=document.createElement('span');unlocked.textContent='Все кампании открыты';footer.append(unlocked)}if(window.kubanDesktop&&!content.querySelector('[data-pc-action="close"]')){const exit=document.createElement('button');exit.className='b';exit.dataset.pcAction='close';exit.textContent='Выйти из игры';footer.append(exit)}content.querySelector('.kw-home-footer')?.remove();content.append(footer)}return result};
+
 })();
