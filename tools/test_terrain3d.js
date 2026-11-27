@@ -22,3 +22,11 @@ assert.ok(atmo.water(1800,1100,[[100,200,30,40]],null,false).every(Number.isFini
 assert.ok(atmo.shadows([u],()=>0,false).every(Number.isFinite));
 for(const angle of [0,.5,1.57,3.14,4.7])for(const tilt of [.65,.8,1]){const v=camera(10,20,900,650,angle,tilt),p=v.project(400,200,17),q=v.unproject(p.x,p.y,17);assert.ok(Math.abs(q.x-400)<1e-8&&Math.abs(q.y-200)<1e-8)}
 console.log('Environment, actors, atmosphere and camera tests passed');
+
+const mission=require('./mission3d.js');
+for(const theme of mission.themes){const props=[{x:100,y:100,type:theme,variant:0,name:'Резервуар'},{x:200,y:200,type:theme,variant:1,name:'Грузовик'}],obstacles=[{x:400,y:400,rx:90,ry:80}];
+const before=JSON.stringify([props,obstacles]),m=mission.build(props,obstacles,theme,()=>0,()=>true);
+assert.ok(m.length>0&&m.length%18===0&&m.every(Number.isFinite));
+assert.equal(mission.build(props,obstacles,theme,()=>0,()=>false).length,0);
+assert.equal(JSON.stringify([props,obstacles]),before)}
+console.log('Fourteen campaign theme mesh tests passed');
