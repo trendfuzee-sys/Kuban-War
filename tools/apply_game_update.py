@@ -34,6 +34,8 @@ if html.exists():
             if "</body>" not in page: raise RuntimeError("Missing HTML body")
             page=page.replace("</body>",tag+"\n</body>",1)
             html.write_text(page,encoding="utf-8")
+    from install_unit_art import install_unit_art
+    install_unit_art(html, update)
     import re
     scripts = re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', html.read_text(encoding='utf-8'), re.S|re.I)
     if not scripts:
