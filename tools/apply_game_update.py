@@ -37,6 +37,8 @@ if html.exists():
     from install_unit_art import install_unit_art
     install_unit_art(html, update)
     subprocess.run([sys.executable, str(pathlib.Path(__file__).with_name('campaign_fix_1211.py')), str(html)], check=True)
+    subprocess.run(['node', str(pathlib.Path(__file__).with_name('test_terrain3d.js'))], check=True)
+    subprocess.run([sys.executable, str(pathlib.Path(__file__).with_name('install_terrain3d.py')), str(html)], check=True)
     import re
     scripts = re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', html.read_text(encoding='utf-8'), re.S|re.I)
     if not scripts:
