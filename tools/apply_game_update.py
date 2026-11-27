@@ -44,10 +44,21 @@ if html.exists():
     dialogue=pathlib.Path(__file__).with_name('dialogue_scene.js')
     subprocess.run(['node','--check',str(dialogue)],check=True)
     page=html.read_text(encoding='utf-8')
-    if 'KW_DIALOGUE_DUET_140' not in page:
-        if page.count('</body>')!=1: raise RuntimeError('Unexpected HTML body')
-        html.write_text(page.replace('</body>','<script>/* KW_DIALOGUE_DUET_140 */\n'+dialogue.read_text(encoding='utf-8')+'\n</script></body>',1),encoding='utf-8')
     import re
+    # Replace the previous embedded module rather than retaining stale code.
+    tag = '<script>/* KW_DIALOGUE_DUET_140 */\n'+dialogue.read_text(encoding='utf-8')+'\n</script>'
+    pattern = r'<script>\s*/\* KW_DIALOGUE_DUET_140 \*/.*?</script>'
+    matches = list(re.finditer(pattern, page, re.S))
+    if len(matches) > 1:
+        raise RuntimeError('Duplicate dialogue modules')
+    if matches:
+        m = matches[0]
+        page = page[:m.start()] + tag + page[m.end():]
+    else:
+        if 'KW_DIALOGUE_DUET_140' in page or page.count('</body>') != 1:
+            raise RuntimeError('Unexpected dialogue module or HTML body')
+        page = page.replace('</body>', tag+'</body>', 1)
+    html.write_text(page, encoding='utf-8')
     scripts = re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', html.read_text(encoding='utf-8'), re.S|re.I)
     if not scripts:
         raise RuntimeError('No game scripts')
