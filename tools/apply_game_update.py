@@ -83,6 +83,8 @@ with zipfile.ZipFile(base) as src:
     if len(roots) != 1:
         raise RuntimeError("Cannot identify unique game installation")
     root = roots[0]
+    from normalize_voices import normalize_voices
+    normalize_voices(src, root, overlay / 'resources/app/game')
     changes = {root + p.relative_to(overlay).as_posix(): p for p in overlay.rglob("*") if p.is_file()}
     if not changes:
         raise RuntimeError("No game files to update")
