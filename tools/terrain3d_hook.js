@@ -7,9 +7,9 @@
  window.KW3DBuilding=e=>ready&&drawnBuildings.has(e);window.KW3DDecor=e=>ready&&drawnDecor.has(e);
  try{enabled=localStorage.getItem('kw.terrain3d')==='1'}catch(_){}
  const toggle=document.createElement('button');toggle.type='button';toggle.className='b';toggle.style.cssText='position:fixed;right:12px;top:50px;z-index:8;font-size:12px;padding:5px 9px';toggle.hidden=true;
- function label(){toggle.textContent=enabled&&!failed?'Рельеф: 3D (тест)':'Рельеф: 2D'}
+ function label(){toggle.textContent=enabled&&!failed?'Графика: 3D (тест)':'Графика: 2D'}
  label();document.body.append(toggle);
- const controls=document.createElement('div');controls.style.cssText='position:fixed;right:12px;top:88px;z-index:8;display:flex;gap:4px';controls.hidden=true;
+ const controls=document.createElement('div');controls.style.cssText='position:fixed;right:12px;top:88px;z-index:8;display:flex;gap:4px';controls.hidden=true;controls.style.display='none';
  for(const [name,act] of [['↶',()=>angle-=Math.PI/12],['↷',()=>angle+=Math.PI/12],['Наклон',()=>tilt=tilt===1?.8:tilt===.8?.65:1],['Сброс',()=>{angle=0;tilt=1}]]){
  const b=document.createElement('button');b.type='button';b.className='b';b.textContent=name;b.onclick=()=>{act();angle=(angle+Math.PI*2)%(Math.PI*2);dr=null};controls.append(b)}
  const qualitySelect=document.createElement('select');qualitySelect.title='Качество 3D';qualitySelect.setAttribute('aria-label','Качество 3D');for(const [v,n] of [['auto','Авто'],['0','Низкое'],['1','Среднее'],['2','Высокое'],['3','Ультра']]){const o=document.createElement('option');o.value=v;o.textContent=n;qualitySelect.append(o)}qualitySelect.value=qualityLevel===null?'auto':String(qualityLevel);qualitySelect.onchange=()=>{qualityLevel=qualitySelect.value==='auto'?null:Number(qualitySelect.value);adaptive.reset();try{if(qualityLevel===null)localStorage.removeItem('kw.3d.quality');else localStorage.setItem('kw.3d.quality',String(qualityLevel))}catch(_){}};controls.append(qualitySelect);document.body.append(controls);
@@ -29,7 +29,7 @@
  renderer??=window.KWTerrain3D.create();
  const quality=window.KWQuality3D.preset(qualityLevel??ST.q),resolution=adaptive.sample(performance.now());
  const flat=mis?.ci===4||terrainBiome()==='cellar'||!!layout?.river;
- const mask=(x,y)=>PONDS.some(p=>((x-p[0])/(p[2]+28))**2+((y-p[1])/(p[3]+28))**2<1)||layout?.bases?.some(b=>Math.hypot(x-b.x,y-b.y)<160);
+ const mask=(x,y)=>(PONDS||[]).some(p=>((x-p[0])/(p[2]+28))**2+((y-p[1])/(p[3]+28))**2<1)||layout?.bases?.some(b=>Math.hypot(x-b.x,y-b.y)<160);
  const margin=160+((angle||tilt!==1)?Math.hypot(w,h):0),visible=o=>o.x>=x-margin&&o.x<=x+w+margin&&o.y>=y-margin&&o.y<=y+h+margin;
  const objects=E.filter(e=>e.k==='b'&&!e.dead&&e.pg>=1&&['h','b','s','t','w','l'].includes(e.ty)&&visible(e)&&known(e));
  const decors=DEC.filter((d,i)=>visible(d)&&((i*37)%100)<quality.decor*100);
@@ -47,6 +47,6 @@
  const frame=renderer.draw(map,x,y,w,h,dw,dh,mapSeed||0,flat,mask,cache,actorMesh,fx);
  if(!frame)throw Error('Terrain context unavailable');
  ctx.drawImage(frame,sx,sy,dw,dh);drawnBuildings=new Set(objects);drawnDecor=new Set(decors);drawnActors=new Set(actors);drawnShips=new Set(ships);ready=true;return true;
- }catch(err){failed=true;renderer?.dispose();renderer=null;label();console.warn('[3D terrain fallback]',err);return false}
+ }catch(err){failed=true;try{renderer?.dispose()}catch(_){}renderer=null;label();console.warn('[3D terrain fallback]',err);return false}
  };
 })();
