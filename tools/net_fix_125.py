@@ -1,0 +1,158 @@
+from pathlib import Path
+import sys
+p=Path(sys.argv[1])
+s=p.read_text(encoding="utf-8")
+if 'KW_NET_FIX_125' in s: sys.exit(0)
+if 'KW_NET_FIX_112' not in s: raise RuntimeError("Missing previous lifecycle fix")
+root=Path(__file__).parent
+def replace(a,b):
+    global s
+    if s.count(a)!=1: raise RuntimeError("Unexpected game source: "+a[:120])
+    s=s.replace(a,b,1)
+def between(a,b,replacement):
+    global s
+    if s.count(a)!=1 or s.count(b)!=1: raise RuntimeError("Unexpected anchors: "+a[:80])
+    start=s.index(a); end=s.index(b,start+len(a))
+    s=s[:start]+replacement+s[end:]
+
+# Keep simulation running while a host's pause/settings overlay is open; never restart a
+# live network game as a local match. Single-player loop keeps original behaviour.
+replace("if(run&&!paused){try{tick(dt*ST.speed);scrollCam(dt)}",
+        "if(run&&(!paused||window.kubanOnlineAlpha?.role==='host')){try{tick(dt*ST.speed);if(!paused)scrollCam(dt)}")
+replace("frameFault('simulation',err);paused=1;",
+        "frameFault('simulation',err);if(window.kubanOnlineAlpha?.role==='host'){window.kubanOnlineAlpha.abortMatch?.()}else paused=1;")
+# A spatial grid accelerates the pairwise collision loop, preserving its original order.
+replace("function tick(dt){t+=dt;",(root/"net_collision_113.js").read_text(encoding="utf-8")+"\nfunction tick(dt){t+=dt;")
+replace("for(let i=0;i<us.length;i++){const a=us[i];for(let j=i+1;j<us.length;j++)",
+        "if(window.kubanOnlineAlpha?.role==='host'&&us.length>=40)kwNetCollide(us,WW,WH,(x,y)=>mis.ci===4||(!layout?.obstacles&&mis.ci>=0)||campaignWalkable(x,y));else for(let i=0;i<us.length;i++){const a=us[i];for(let j=i+1;j<us.length;j++)")
+# PvP is not a single-player AI match: disable local-only world events and AI bonuses.
+for k in ["worldOn","villageOn","mysteryOn","frontierOn"]:
+    replace("const "+k+"=()=>run&&mis&&mis.ci!==4&&mis.ci!==33;",
+            "const "+k+"=()=>run&&mis&&mis.ci!==4&&mis.ci!==33&&!window.kubanOnlineAlpha?.currentMatch;")
+replace("const jokeOn=()=>run&&!paused&&mis&&mis.ci!==4&&mis.ci!==33;",
+        "const jokeOn=()=>run&&!paused&&mis&&mis.ci!==4&&mis.ci!==33&&!window.kubanOnlineAlpha?.currentMatch;")
+replace("function livingPopulate(){if(!run||!mis||mis.ci===4",
+        "function livingPopulate(){if(window.kubanOnlineAlpha?.currentMatch||!run||!mis||mis.ci===4")
+# The second faction must not be controlled by the single-player AI helpers.
+replace("if(T===1&&s.collect&&h.o!=='a'",
+        "if(T===1&&!window.kubanOnlineAlpha?.currentMatch&&s.collect&&h.o!=='a'")
+replace("if(T===1){if(ai.plan?.phase==='attack'||ai.plan?.phase==='defend')",
+        "if(T===1&&!window.kubanOnlineAlpha?.currentMatch){if(ai.plan?.phase==='attack'||ai.plan?.phase==='defend')")
+# Lifecycle
+replace("function closeOnline(){online.active=false;","function closeOnline(){stopTransport();online.active=false;")
+replace("function cleanupMatchUI(){clearTimers();","function cleanupMatchUI(){stopTransport();clearTimers();")
+replace("function exitNetwork(){if(exiting)return;exiting=true;",
+        "function exitNetwork(){if(exiting)return;notifyPeerLeave();exiting=true;")
+replace("window.addEventListener('pagehide',()=>{if(netPlayed||online.currentRoom){",
+        "window.addEventListener('pagehide',()=>{if(!exiting&&(netPlayed||online.currentRoom)){notifyPeerLeave();")
+# Lobby: preserve selected match settings during automatic refresh; skip unnecessary room listing.
+replace("const cfg={hostRace:root.querySelector","const cfg={protocol:125,hostRace:root.querySelector")
+replace("room&&players.length>=2&&players.every(p=>p.ready)","room&&players.length===2&&players.every(p=>p.ready)")
+replace("const box=online.panel.querySelector('[data-list]');box.replaceChildren();",
+        "const box=online.panel.querySelector('[data-list]');const draft={};for(const k of ['host-race','guest-race','gold','size','biome','neutral']){const el=box.querySelector('[data-'+k+']');if(el)draft[k]=el.type==='checkbox'?el.checked:el.value}box.replaceChildren();")
+replace("box.append(panel);box.append(lobbyButtons('Начать сетевой бой'",
+        "box.append(panel);for(const [k,v] of Object.entries(draft)){const el=panel.querySelector('[data-'+k+']');if(el){if(el.type==='checkbox')el.checked=v;else el.value=v}}box.append(lobbyButtons('Начать сетевой бой'")
+replace("()=>rpc('kuban_start_match',{p_room_id:state.room.id,p_config:configFromPanel()})",
+        "async()=>{await rpc('kuban_start_match',{p_room_id:state.room.id,p_config:configFromPanel()});try{await rpc('kuban_start_game',{p_room_id:state.room.id})}catch(e){console.warn('[room status]',e)}}")
+replace("const rooms=await get('kuban_rooms?select=id,code,name,host_id,max_players,is_private,status&status=eq.waiting&order=created_at.desc&limit=30');",
+        "const rooms=mine.length?[]:await get('kuban_rooms?select=id,code,name,host_id,max_players,is_private,status&status=eq.waiting&order=created_at.desc&limit=30');")
+replace("Подключено к серверу · обновление списка каждые 3 секунды","Подключено к серверу · обновление списка каждые 5 секунд")
+replace("Играбельная альфа · полноценный сетевой матч 1v1","Сетевой матч 1v1 · обоим игрокам нужна версия 1.2.5")
+# One seeded generator for the entire synchronous start (not just layout).
+between("const baseSetupMap=setupMap;","const baseAI=ai;","")
+between("const baseTick=tick;tick=function","const baseEnd=end;", """let netStarting=false;
+const netOriginalStart=start;
+start=function(...args){if(netPlayed&&!netStarting){exitNetwork();return}return netOriginalStart(...args)};
+const netOriginalPause=pauseMenu;
+pauseMenu=function(){const r=netOriginalPause();if(online.currentMatch){const shell=$id('mw');shell.querySelector('[data-go2]')?.remove();const p=shell.querySelector('.pause-head p');if(p)p.textContent='Сетевой матч продолжается';}return r};
+const baseTick=tick;tick=function(dt){
+  if(online.currentMatch&&run&&mis?.ci<0){
+    const step=dt/Math.max(.1,Number(ST.speed)||1);
+    if(online.role==='guest'){if((fog.t=(fog.t||0)-step)<=0){fog.t=.2;fog()}return}
+    if(online.role==='host'&&net){
+      const n=net;n.simAcc=Math.min(.12,(n.simAcc||0)+step);
+      while(n.simAcc>=1/30&&run&&net===n){n.simAcc-=1/30;const localPause=paused;paused=0;try{baseTick(1/30)}finally{if(run)paused=localPause}}
+      return
+    }
+  }return baseTick(dt)
+};
+""")
+replace("function serializeSnapshot(){return {t,mis:{...mis},",
+        "function serializeSnapshot(){return {t,NIGHT,mis:{...mis},factionState:shallowSanitize(factionState),herbPatches:shallowSanitize(herbPatches),")
+replace("FX:FX.map(f=>shallowSanitize(f))}}","FX:FX.slice(-300).map(f=>shallowSanitize(f))}}")
+replace("if(c.ARAB)c.ARAB=[c.ARAB[1],c.ARAB[0]];",
+        "if(c.ARAB)c.ARAB=[c.ARAB[1],c.ARAB[0]];if(c.factionState)c.factionState=[c.factionState[1],c.factionState[0]];if(c.herbPatches)for(const h of c.herbPatches)if(h.T===0||h.T===1)h.T=1-h.T;")
+# Stable identity, correct selection, faction UI and render interpolation.
+between("function applySnapshot(raw){","function battleCfgFromMatch(match){", """function renderPoint(v,now){const f=Math.max(0,Math.min(1,(now-v.at)/v.duration));return {x:v.x+(v.tx-v.x)*f,y:v.y+(v.ty-v.y)*f}}
+function applySnapshot(raw){
+  const n=net,snap=swapPerspectiveSnapshot(raw),now=clock(),first=!n.lastSeq;
+  const wanted=first?[]:(sel?.map?.(u=>u.id)||[]);
+  if(snap.mis){if(!mis)mis=snap.mis;else Object.assign(mis,snap.mis);document.body.dataset.race=mis.p}
+  t=snap.t||0;NIGHT=!!snap.NIGHT;gold=snap.gold;UP=snap.UP||[[0,0],[0,0]];ARAB=snap.ARAB||[0,0];run=!!snap.run;
+  if(Array.isArray(snap.factionState))factionState=snap.factionState;
+  if(Array.isArray(snap.herbPatches))herbPatches=snap.herbPatches;
+  const existing=new Map((E||[]).map(e=>[e.id,e])),map=new Map(),next=[],visual=new Map();
+  const duration=Math.max(45,Math.min(300,n.lastApplied?now-n.lastApplied:100));
+  for(const rawEntity of snap.E){
+    if(!Number.isSafeInteger(rawEntity.id)||map.has(rawEntity.id))throw Error('Invalid entity ID');
+    const prior=existing.get(rawEntity.id),same=prior&&prior.k===rawEntity.k&&prior.race===rawEntity.race;
+    const entity=same?prior:{};map.set(rawEntity.id,entity);next.push(entity);
+    if(rawEntity.k==='u'&&Number.isFinite(rawEntity.x)&&Number.isFinite(rawEntity.y)){
+      const old=n.visual.get(rawEntity.id),pos=old?renderPoint(old,now):{x:rawEntity.x,y:rawEntity.y};
+      const smooth=!first&&same&&Math.hypot(pos.x-rawEntity.x,pos.y-rawEntity.y)<180;
+      visual.set(rawEntity.id,{x:smooth?pos.x:rawEntity.x,y:smooth?pos.y:rawEntity.y,tx:rawEntity.x,ty:rawEntity.y,at:now,duration});
+    }
+  }
+  for(let i=0;i<snap.E.length;i++){
+    const v=reviveValue(snap.E[i],map),o=next[i];
+    for(const k of Object.keys(o))if(!Object.prototype.hasOwnProperty.call(v,k))delete o[k];
+    Object.assign(o,v);
+  }
+  E=next;n.visual=visual;
+  IT=(snap.IT||[]).map(v=>reviveValue(v,map));FX=(snap.FX||[]).map(v=>reviveValue(v,map));
+  sel=wanted.map(id=>map.get(id)).filter(e=>e&&!e.dead);
+  if(!sel.length){const h=E.find(e=>e.team===0&&!e.dead&&(e.i===9||e.arab));if(h){sel=[h];if(first){cam.x=h.x-W/Z/2;cam.y=h.y-H/Z/2;clampC()}}}
+  if(first){ficApply();setMus(mis.p+'/battle');fog();hud.p=''}
+}
+const netDraw=draw;
+draw=function(...args){
+  const n=net;if(!n||online.role!=='guest'||!n.lastSeq||!run)return netDraw(...args);
+  const now=clock(),restore=[],oldT=t;
+  try{
+    for(const e of E){const v=n.visual.get(e.id);if(!v)continue;const pos=renderPoint(v,now);restore.push([e,e.x,e.y]);e.x=pos.x;e.y=pos.y}
+    t=oldT+Math.min(.2,Math.max(0,(now-n.lastApplied)/1000));
+    return netDraw(...args);
+  }finally{t=oldT;for(const [e,x,y] of restore){e.x=x;e.y=y}}
+};
+""")
+replace("function hostPerspectiveSwap(fn){const oldSel=sel, oldPlace=place;",
+        "function hostPerspectiveSwap(fn){const oldSel=sel, oldPlace=place, oldPause=paused;const swapFaction=()=>{if(factionState.length===2)[factionState[0],factionState[1]]=[factionState[1],factionState[0]];for(const h of herbPatches)if(h.T===0||h.T===1)h.T=1-h.T;[heroMemory[0],heroMemory[1]]=[heroMemory[1],heroMemory[0]]};swapFaction();paused=0;")
+replace("sel=oldSel;place=oldPlace;hud.p='';}}","swapFaction();paused=oldPause;sel=oldSel;place=oldPlace;hud.p='';}}")
+between("function sendCommand(kind,payload){","issue=function(wx,wy,am){","function sendCommand(kind,payload){return netCommand(kind,payload)}\n")
+# Replace polling-only transport with the new independent transport.
+between("const netLocks=new Set();","const style=html('style');style.textContent=", (root/"net_transport_125.js").read_text(encoding="utf-8")+"\n")
+replace("window.kubanOnlineAlpha=online;","online.abortMatch=exitNetwork;window.kubanOnlineAlpha=online;")
+
+# Store the player's choice in the existing nickname field using a reversible suffix.
+# Room membership policy already restricts each player to their own row; readiness
+# is reset through leave/join only if an existing RPC does not permit profile edits.
+replace("function configFromPanel(){const root=online.panel;", """function kwChoice(p){const m=String(p?.nickname||'').match(/^(.*)~([0-9a-z_-]+)$/i);return {name:m?m[1]:String(p?.nickname||''),race:m?m[2]:null}}
+function kwSelectedRace(){return localStorage.getItem('kuban.online.race')||DEFAULT_CFG.hostRace}
+function kwNick(){return saveNick().slice(0,14).replace(/~/g,'')+'~'+kwSelectedRace()}
+function configFromPanel(){const root=online.panel;""")
+replace("hostRace:root.querySelector('[data-host-race]')?.value||DEFAULT_CFG.hostRace,guestRace:root.querySelector('[data-guest-race]')?.value||DEFAULT_CFG.guestRace", "hostRace:kwChoice(online.lobbyState.players.find(p=>p.user_id===online.lobbyState.room.host_id)).race||DEFAULT_CFG.hostRace,guestRace:kwChoice(online.lobbyState.players.find(p=>p.user_id!==online.lobbyState.room.host_id)).race||DEFAULT_CFG.guestRace")
+replace("online.currentRoom=state.room;const box=", "online.currentRoom=state.room;online.lobbyState=state;const box=")
+replace("p_nickname:saveNick()", "p_nickname:kwNick()") if s.count("p_nickname:saveNick()")==1 else None
+s=s.replace("p_nickname:saveNick()", "p_nickname:kwNick()")
+replace("?.nickname||'—')", "?.nickname?.split('~')[0]||'—')")
+replace("\x60\x24{p.nickname}\x24{p.user_id", "\x60\x24{kwChoice(p).name} · \x24{RACE_NAMES[kwChoice(p).race]||'—'}\x24{p.user_id")
+replace("const myReady=!!state.mine?.ready;", """const myReady=!!state.mine?.ready;
+if(!state.match||state.match.status!=='running'){
+ const chooser=html('div',null,'kw-online-config');chooser.innerHTML='<h2>Ваша фракция</h2>'+raceSelectMarkup(kwChoice(state.mine).race||kwSelectedRace(),'data-my-race');
+ const select=chooser.querySelector('select');select.disabled=myReady;select.onchange=()=>{localStorage.setItem('kuban.online.race',select.value);guarded(async()=>{await patch('kuban_players?user_id=eq.'+encodeURIComponent(state.me),{nickname:kwNick()});const rows=await get('kuban_players?select=nickname&user_id=eq.'+encodeURIComponent(state.me));if(rows[0]?.nickname!==kwNick())throw Error('Не удалось сохранить фракцию. Проверьте права обновления профиля.');await refreshLobby()})};box.append(chooser);
+}""")
+replace("<label>Раса хоста \x24{raceSelectMarkup(DEFAULT_CFG.hostRace,'data-host-race')}</label><label>Раса гостя \x24{raceSelectMarkup(DEFAULT_CFG.guestRace,'data-guest-race')}</label>","")
+replace("players.every(p=>p.ready)&&room.host_id", "players.every(p=>p.ready&&kwChoice(p).race)&&room.host_id")
+# Keep selection intentionally empty rather than forcing the hero on every update.
+replace("if(!sel.length){const h=E.find", "if(first&&!sel.length){const h=E.find")
+p.write_text(s,encoding="utf-8")
