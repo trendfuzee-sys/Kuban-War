@@ -2,7 +2,14 @@
 (()=>{
 'use strict';
 const aliases={'данил':'danil','казак данил':'danil','кровчински':'krovchinski','полуживой вячислав кровчински':'krovchinski','субидей':'subidey','субидей исатаев':'subidey','богдан':'bogdan','богдан рыжий':'bogdan','адмирал эстон':'eston','эстон':'eston','сосед':'neighbor','хлебороб':'farmer','казак':'cossack','дозорный':'sentry','беглец':'fugitive','рабочий':'worker','посланник орды':'envoy','торговец':'merchant','всадник':'rider','старик':'elder','студент':'student','ботан':'nerd','араб':'arab','сожитель':'roommate','заключённый':'prisoner','выживший':'survivor','атаман':'concepts/ataman','военачальник':'concepts/commander','лидер беглецов':'concepts/outlaw','преподаватель':'concepts/dean','аристократ':'concepts/aristocrat'};
-const key=n=>aliases[String(n||'').trim().toLowerCase()]||null;
+const normalize=n=>String(n||'').normalize('NFKC').toLowerCase().replace(/ё/g,'е').replace(/[«»"'.,:!?()]/g,' ').replace(/\s+/g,' ').trim();
+const normalizedAliases=Object.fromEntries(Object.entries(aliases).map(([n,k])=>[normalize(n),k]));
+function key(n){
+ const name=normalize(n);if(!name)return null;
+ if(normalizedAliases[name])return normalizedAliases[name];
+ for(const [pattern,k] of [[/данил/,'danil'],[/кровчинск/,'krovchinski'],[/суб[ие]дей|исатаев/,'subidey'],[/богдан/,'bogdan'],[/эстон/,'eston'],[/араб/,'arab'],[/сожител/,'roommate'],[/атаман/,'concepts/ataman'],[/военачальник|десятник|командир/,'concepts/commander'],[/староста|старик/,'elder'],[/дозор|развед|страж|охранник/,'sentry'],[/торгов|купец/,'merchant'],[/крестья|хлебороб|земледел/,'farmer'],[/беглец|мародер/,'fugitive'],[/заключен|узник/,'prisoner'],[/студент/,'student'],[/ботан/,'nerd'],[/преподав|декан/,'concepts/dean'],[/аристократ/,'concepts/aristocrat'],[/выживш|бежен/,'survivor'],[/всадник/,'rider'],[/посланник/,'envoy'],[/казак/,'cossack'],[/рабоч|механик|мастер/,'worker'],[/житель|сосед/,'neighbor']])if(pattern.test(name))return k;
+ return null;
+}
 const hero={kaz:'danil',nov:'krovchinski',mon:'subidey',bog:'bogdan'};
 const oldPortrait={danil:'kaz',krovchinski:'nov',subidey:'mon',bogdan:'bog'};
 const style=document.createElement('style');style.textContent=
@@ -41,9 +48,33 @@ function emotionOrder(mood,txt){
  if(/^(что\?|как\?|не может быть|серьезно\?)/.test(t))return ['surprised'];
  return ['neutral'];
 }
-function portrait(who,line){const k=key(who),m=window.KWDialoguePortraits||{},v=m[k],entry=v?.placeholder_only?m[v.fallback]:v,images=entry?.portraits||{};for(const e of [...emotionOrder(line?.[2],line?.[1]),'neutral'])if(images[e])return images[e];return oldPortrait[k]?'img/'+oldPortrait[k]+'/hero.png.png':null}
+const atlasByKey={danil:'kaz_hero',krovchinski:'nov_hero',subidey:'mon_hero',bogdan:'bog_hero',eston:'boss_admiral',neighbor:'special_civilian',farmer:'kaz_worker',cossack:'kaz_unit_1',sentry:'special_guard',fugitive:'nov_unit_1',worker:'nov_worker',envoy:'mon_worker',merchant:'special_civilian',rider:'mon_unit_1',elder:'special_civilian',student:'bog_worker',nerd:'bog_worker',arab:'special_arab',roommate:'special_roommate',prisoner:'nov_worker',survivor:'special_civilian','concepts/ataman':'kaz_legend','concepts/commander':'mon_legend','concepts/outlaw':'nov_legend','concepts/dean':'bog_legend','concepts/aristocrat':'special_guard'};
+const neutralSilhouette='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 300"><defs><linearGradient id="a" x2="0" y2="1"><stop stop-color="#b3a17a"/><stop offset="1" stop-color="#383a35"/></linearGradient></defs><path fill="#202623" d="M22 290V236Q27 175 79 158L88 147Q66 120 71 82Q76 40 120 35Q164 40 169 82Q174 120 152 147L161 158Q213 175 218 236V290Z"/><path fill="url(#a)" opacity=".8" d="M22 290V236Q27 175 79 158L88 147Q66 120 71 82Q76 40 120 35Q164 40 169 82Q174 120 152 147L161 158Q213 175 218 236V290Z"/><path fill="none" stroke="#c7ac72" stroke-width="2" d="M22 290V236Q27 175 79 158L88 147Q66 120 71 82Q76 40 120 35Q164 40 169 82Q174 120 152 147L161 158Q213 175 218 236V290Z"/></svg>');
+function portraitCandidates(who,line){
+ const k=key(who),m=window.KWDialoguePortraits||{},v=m[k],entry=v?.placeholder_only?m[v.fallback]:v,images=entry?.portraits||{};
+ const out=[];for(const e of [...emotionOrder(line?.[2],line?.[1]),'neutral',...Object.keys(images)])if(images[e])out.push({path:images[e],atlas:false});
+ if(oldPortrait[k])out.push({path:'img/'+oldPortrait[k]+'/hero.png.png',atlas:false});
+ out.push({path:'unit-art/sprites/'+(atlasByKey[k]||'special_civilian')+'.webp',atlas:true});
+ if(atlasByKey[k]!=='special_civilian')out.push({path:'unit-art/sprites/special_civilian.webp',atlas:true});
+ return out.filter((p,i)=>out.findIndex(q=>q.path===p.path)===i);
+}
+const portraitCache=new Map();
+function loadPortrait(candidate){
+ const {path,atlas}=candidate,cacheKey=path+'|'+atlas;
+ if(portraitCache.has(cacheKey))return portraitCache.get(cacheKey);
+ const pending=new Promise(resolve=>{
+  const image=new Image();let done=false;
+  const finish=value=>{if(done)return;done=true;clearTimeout(timer);image.onload=image.onerror=null;resolve(value)};
+  const timer=setTimeout(()=>finish(null),5000);
+  image.onerror=()=>finish(null);
+  image.onload=()=>{try{if(!atlas){finish(path);return}const w=image.naturalWidth/6,h=image.naturalHeight/4;if(!Number.isInteger(w)||!Number.isInteger(h)||w<1||h<1){finish(null);return}const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(image,0,0,w,h,0,0,w,h);finish(c.toDataURL('image/png'))}catch(_){finish(null)}};
+  image.src=path;
+ });
+ portraitCache.set(cacheKey,pending);return pending;
+}
+async function resolvePortrait(candidates){for(const c of candidates){const p=await loadPortrait(c);if(p)return p}return neutralSilhouette}
 function lastLine(lines,n,who){for(let i=n;i>=0;i--)if(lines[i]?.[0]===who||!!key(who)&&key(lines[i]?.[0])===key(who))return lines[i];return null}
-window.KWDialogueEmotion={emotionOrder,lastLine};
+window.KWDialogueEmotion={emotionOrder,lastLine,key,portraitCandidates,resolvePortrait};
 // Keep the protagonist (or first speaker) on the left for the entire scene.
 function assign(lines,n,preferred){
  const now=lines[n]?.[0];if(!now)return [null,null];
@@ -54,7 +85,17 @@ function assign(lines,n,preferred){
  const partner=[...lines.slice(0,n).reverse(),...lines.slice(n+1)].map(l=>l[0]).find(w=>w&&!same(w,left));
  return [left,partner||null];
 }
-function updateSlot(slot,who,active,line){slot.el.hidden=!who;slot.el.classList.toggle('active',!!who&&active);slot.label.textContent=who||'';const path=portrait(who,line);if(slot.who!==who||slot.path!==path){slot.who=who;slot.path=path;slot.img.hidden=!path;if(path){slot.img.onerror=()=>{const neutral=portrait(who,null);if(neutral&&neutral!==path&&slot.img.getAttribute('src')===path){slot.img.src=neutral}else slot.img.hidden=true};slot.img.src=path}else slot.img.removeAttribute('src')}}
+function updateSlot(slot,who,active,line){
+ slot.el.hidden=!who;slot.el.classList.toggle('active',!!who&&active);slot.label.textContent=who||'';
+ if(!who){slot.token=(slot.token||0)+1;slot.who=null;slot.path=null;slot.img.hidden=true;return}
+ const candidates=portraitCandidates(who,line),signature=candidates.map(c=>c.path).join('|');
+ if(slot.who===who&&slot.path===signature)return;
+ const token=slot.token=(slot.token||0)+1;
+ const changed=slot.who!==who;slot.who=who;slot.path=signature;slot.img.hidden=false;
+ if(changed||!slot.img.getAttribute('src'))slot.img.src=neutralSilhouette;
+ slot.img.onerror=()=>{if(slot.token===token&&slot.img.getAttribute('src')!==neutralSilhouette)slot.img.src=neutralSilhouette};
+ resolvePortrait(candidates).then(path=>{if(slot.token===token&&slot.who===who)slot.img.src=path});
+}
 const previous=paintTalk;paintTalk=function(...args){const result=previous(...args);if(!talk)return result;const who=talk.lines[talk.n]?.[0],preferred=hero[CAM[scenario?.id??talk.id]?.p],pair=assign(talk.lines,talk.n,preferred);if(Math.floor(talk.n/4)%2&&pair[0]&&pair[1])pair.reverse();for(let i=0;i<2;i++)updateSlot(slots[i],pair[i],(pair[i]===who||!!key(who)&&key(pair[i])===key(who)),lastLine(talk.lines,talk.n,pair[i]));resize();return result};
 // Older portrait renderer references the current wrapper's token.
 paintTalk.token=0;
