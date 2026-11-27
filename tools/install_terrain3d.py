@@ -23,7 +23,7 @@ a="paintShip(g,0,0,e.ship==='boss'?1:.55,e.ship==='boss',e.ship==='boss'&&naval?
 if s.count(a)!=1:raise RuntimeError("Missing naval rendering anchor")
 s=s.replace(a,"if(!window.KW3DShip?.(e))"+a,1)
 root=Path(__file__).parent
-module="\n".join((root/n).read_text(encoding="utf-8") for n in ("terrain3d.js","environment3d.js","mission3d.js","naval3d.js","actors3d.js","atmosphere3d.js","camera3d.js","terrain3d_hook.js"))
+module="\n".join((root/n).read_text(encoding="utf-8") for n in ("terrain3d.js","environment3d.js","mission3d.js","naval3d.js","actors3d.js","atmosphere3d.js","camera3d.js","quality3d.js","terrain3d_hook.js"))
 if s.count("</body>")!=1:raise RuntimeError("Missing body")
 s=s.replace("</body>","<script>/* KW_TERRAIN_130 */\n"+module+"\n</script></body>",1)
 p.write_text(s,encoding="utf-8")
