@@ -41,6 +41,12 @@ if html.exists():
     subprocess.run([sys.executable, str(pathlib.Path(__file__).with_name('install_terrain3d.py')), str(html)], check=True)
     from install_dialogue_art import install_dialogue_art
     install_dialogue_art(html, update)
+    dialogue=pathlib.Path(__file__).with_name('dialogue_scene.js')
+    subprocess.run(['node','--check',str(dialogue)],check=True)
+    page=html.read_text(encoding='utf-8')
+    if 'KW_DIALOGUE_DUET_140' not in page:
+        if page.count('</body>')!=1: raise RuntimeError('Unexpected HTML body')
+        html.write_text(page.replace('</body>','<script>/* KW_DIALOGUE_DUET_140 */\n'+dialogue.read_text(encoding='utf-8')+'\n</script></body>',1),encoding='utf-8')
     import re
     scripts = re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', html.read_text(encoding='utf-8'), re.S|re.I)
     if not scripts:
