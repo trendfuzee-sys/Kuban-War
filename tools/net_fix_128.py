@@ -195,8 +195,7 @@ replace("case 'stance':{sel=E.filter","case 'formation':{const points=payload.po
 replace("online.abortMatch=exitNetwork;window.kubanOnlineAlpha=online;","online.abortMatch=exitNetwork;online.sendFormation=(plan,assault)=>{const ok=plan.filter(p=>p.ok&&p.u?.team===0&&!p.u.dead);if(!ok.length)return;sendCommand('formation',{points:ok.map(p=>({id:p.u.id,x:p.x,y:p.y})),assault:!!assault});say(vk(ok.find(p=>p.u.i===9)?.u||ok[0].u),'order');formationFlash={plan:ok,until:performance.now()+700};for(const p of ok)kwLocalClick(p.x,p.y,10,.45,'#e7cd83')};window.kubanOnlineAlpha=online;")
 
 # Fixed river layout is selected through the existing network biome field.
-replace("function relocateMap(){", (root/"river_map.js").read_text(encoding="utf-8")+"\nfunction relocateMap(){if(layout?.riverRequested){kwRiverPopulate({});return;}")
-replace("PONDS=[];}\nfunction relocateMap", "PONDS=[];}\nfunction relocateMap") if False else None
+replace("function relocateMap(){", (root/"river_map.js").read_text(encoding="utf-8").split("if(typeof module")[0]+"\nfunction relocateMap(){if(layout?.riverRequested){kwRiverPopulate({});return;}")
 replace("shift:ci>=0?0:(mapRand()-.5)*.13};PONDS=[];", "shift:ci>=0?0:(mapRand()-.5)*.13,riverRequested:ci<0&&opt?.biome==='river'};PONDS=[];")
 replace("if(ci_<0||ci_===4)populateSites(opt);", "if((ci_<0||ci_===4)&&!layout?.river)populateSites(opt);")
 replace("function campaignBarrier(x,y,r=0){return", "function campaignBarrier(x,y,r=0){if(layout?.river&&kwRiverBlocked(x,y,r,WW,WH))return true;return")
@@ -210,6 +209,6 @@ replace("function combatSight(a,b){if(!layout?.obstacles||mis?.ci<0||mis?.ci===4
 replace("function openSite(site,h){if(tradeSite", """function kwRiverVisit(site,h){if(site.kind==='cache'&&!site.sold.cache){if(putReward(h,site.reward)){site.sold.cache=1;gold[h.team]+=120;gxp(h,65)}}else if(site.kind==='merchant'&&!(site.sold['welcome'+h.team])){site.sold['welcome'+h.team]=1;gold[h.team]+=100}}
 function openSite(site,h){if(layout?.river&&window.kubanOnlineAlpha?.currentMatch){kwRiverVisit(site,h);return}if(tradeSite""")
 replace("if(h.team==0&&(h.i==9||h.arab)&&h.inv){pickup(h);", "if((h.team==0||(layout?.river&&h.team==1))&&(h.i==9||h.arab)&&h.inv){if(h.team==0)pickup(h);")
-# Ensure a unit cannot enter the river even if an ability bypasses the pathfinder.
-replace("function kwStartClock(n){", "function kwStartClock(n){")
+replace("function doPlace(wx,wy){", "function doPlace(wx,wy){if(layout?.river&&Math.abs(wx*1792/WW-870)<70&&Math.abs(wy*856/WH-390)<120){toast('На мосту нельзя строить');return;}")
+replace("(!ST.fog||ex[ci(s.x,s.y)])", "(!ST.fog||window.kubanOnlineAlpha?.remoteInput||ex[ci(s.x,s.y)])")
 p.write_text(s,encoding="utf-8")
