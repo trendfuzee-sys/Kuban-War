@@ -11,6 +11,7 @@ start=function(...args){
  mis.zombies=true;mis.zDifficulty=([0,1,2].includes(Number(config.zDifficulty))?Number(config.zDifficulty):1);mis.zWave=0;mis.zRemaining=0;mis.zNext=t+120;mis.zSpawnAt=t;mis.zPhase='prepare';
  E=E.filter(e=>e.team<2||e.k==='m');
  const d=settings[mis.zDifficulty];gold[0]=gold[1]=d.gold;
+ const halls=E.filter(e=>e.k==='b'&&e.ty==='h'&&e.team<2);for(const b of halls){const x=WW/2+(b.team===0?-180:180),y=WH/2,dx=x-b.x,dy=y-b.y;for(const e of E.filter(e=>e.team===b.team&&(e.k==='u'||e.k==='b'))){const p=campaignFree(e.x+dx,e.y+dy);e.x=p.x;e.y=p.y;if(e.tx!=null)e.tx=e.x;if(e.ty!=null&&e.k==='u')e.ty=e.y;e.tg=null;e.pt=null;} } const mines=E.filter(e=>e.k==='m');for(let i=0;i<Math.min(2,mines.length);i++){mines[i].x=WW/2+(i===0?-290:290);mines[i].y=WH/2+200;}const own=E.find(e=>e.team===0&&e.i===9);if(own){cam.x=own.x-W/Z/2;cam.y=own.y-H/Z/2;clampC();}
  // Both bases remain separately owned; neutral team 2 is the hostile horde.
  for(const b of E.filter(e=>e.k==='b'&&e.ty==='h')){const team=b.team,race=b.race;for(let i=0;i<4;i++){const a=i*Math.PI/2;const p=campaignFree(b.x+Math.cos(a)*110,b.y+Math.sin(a)*110);unit(team,race,i%2,p.x,p.y)}}
  fog();return result;
