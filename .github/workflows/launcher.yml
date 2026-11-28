@@ -12,6 +12,16 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install FFmpeg
+        shell: pwsh
+        run: |
+          choco install ffmpeg --yes --no-progress
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $bin = 'C:\ProgramData\chocolatey\bin'
+          $env:PATH = "$bin;$env:PATH"
+          Add-Content -Path $env:GITHUB_PATH -Value $bin
+          ffmpeg -version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Extract original media without executing old launcher
         shell: pwsh
         env:
