@@ -7,7 +7,7 @@ def replace(a,b):
     if s.count(a)!=1: raise RuntimeError("Unexpected co-op anchor: "+a)
     s=s.replace(a,b,1)
 if "KW_ZOMBIE_COOP" not in s:
-    replace("const cfg={protocol:128,","const cfg={protocol:root.querySelector('[data-mode]')?.value==='zombies'?131:128,mode:root.querySelector('[data-mode]')?.value||'pvp',zDifficulty:Number(root.querySelector('[data-zdifficulty]')?.value??1),")
+    replace("const cfg={protocol:128,","const cfg={protocol:root.querySelector('[data-mode]')?.value==='zombies'?132:128,mode:root.querySelector('[data-mode]')?.value||'pvp',zDifficulty:Number(root.querySelector('[data-zdifficulty]')?.value??1),")
     replace("'biome','neutral'])","'biome','neutral','mode','zdifficulty'])")
     replace("<hr><h2>Настройки матча</h2>","<hr><h2>Настройки матча</h2><label>Режим <select data-mode><option value='pvp'>Дуэль 1 на 1</option><option value='zombies'>Зомби: Последний рубеж — кооператив</option></select></label><label>Сложность орд <select data-zdifficulty><option value='0'>Лёгкая</option><option value='1' selected>Нормальная</option><option value='2'>Сложная</option></select></label>")
     replace("cfg.biome??'random'","cfg.mode==='zombies'?'0':(cfg.biome??'random')")
@@ -27,6 +27,6 @@ if "KW_ZOMBIE_COOP" not in s:
     replace("u.team==b.team&&D(u,b)<125","(window.KWCoopAllied?.(u.team,b.team)??u.team===b.team)&&D(u,b)<125")
     replace("e.team===u.team&&e.pg>=1&&D(u,e)<125","(window.KWCoopAllied?.(e.team,u.team)??e.team===u.team)&&e.pg>=1&&D(u,e)<125")
     replace("e.k=='u'&&e.team==0&&!e.dead&&D(e,h)<190","e.k=='u'&&(window.KWCoopAllied?.(e.team,h.team)??e.team===h.team)&&!e.dead&&D(e,h)<190")
-    module=Path(__file__).with_name("zombie_coop.js").read_text(encoding="utf-8")
+    module="\n".join(Path(__file__).with_name(n).read_text(encoding="utf-8") for n in ("zombie_coop.js","online_building_art.js"))
     replace("</body>","<script>/* KW_ZOMBIE_COOP */\n"+module+"\n</script></body>")
 p.write_text(s,encoding="utf-8")
