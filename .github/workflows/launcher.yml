@@ -6,7 +6,7 @@ on:
       - 'launcher/**'
       - '.github/workflows/launcher.yml'
 permissions:
-  contents: read
+  contents: write
 jobs:
   build:
     runs-on: windows-latest
@@ -20,3 +20,17 @@ jobs:
           name: KubanLauncher-Windows
           path: launcher/KubanLauncher.exe
           if-no-files-found: error
+
+      - name: Publish launcher download
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = 'launcher-v2.0.0'
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag --title 'Kuban Launcher 2.0' --notes 'Incremental file updates with SHA256 verification' --latest=false
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          gh release upload $tag launcher/KubanLauncher.exe --clobber
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
