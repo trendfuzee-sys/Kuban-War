@@ -3,6 +3,10 @@
 const active=()=>!!window.kubanOnlineAlpha?.currentMatch&&mis?.ci<0&&mis?.zombies===true;
 const settings=[{count:.7,hp:.75,damage:.65,gold:1000,rest:45},{count:1,hp:1,damage:1,gold:750,rest:35},{count:1.25,hp:1.15,damage:1.15,gold:600,rest:25}];
 window.KWCoopAllied=(a,b)=>a===b||active()&&a<2&&b<2&&a>=0&&b>=0;
+const onlineMatch=()=>!!window.kubanOnlineAlpha?.currentMatch&&mis?.ci<0;
+const baseLoot=lootDrop;lootDrop=function(u){if(!onlineMatch())return baseLoot(u);if(Math.random()<(u.zombie?.10:u.i===9?.65:u.wk?.02:.12))dropIt(u.x,u.y,0)};
+const baseDrop=dropIt;dropIt=function(...args){if(!onlineMatch())return baseDrop(...args);const before=IT.length;const result=baseDrop(...args);for(const item of IT.slice(before)){item.l=45;const prior=IT.slice(0,before).find(v=>!v.t&&!v.q&&!v.dropper&&v.k===item.k&&D(v,item)<100&&(v.stack||1)<8);if(prior){prior.stack=(prior.stack||1)+1;prior.l=Math.min(prior.l,45);item.t=1}}IT=IT.filter(v=>!v.t);return result};
+const basePickup=pickup;pickup=function(h){if(!onlineMatch())return basePickup(h);const stacks=IT.filter(v=>v.stack>1&&D(v,h)<=42&&!v.t);for(const item of stacks){const free=h.inv.filter(v=>v===null).length+h.bp.filter(v=>v===null).length;if(!free)continue;const n=Math.min(free,item.stack-1);for(let i=0;i<n;i++){const a=h.inv.includes(null)?h.inv:h.bp;a[a.indexOf(null)]=item.k;item.stack--}gear(h);if(item.stack>1&&free===n)continue}return basePickup(h)};
 const originalStart=start;
 start=function(...args){
  const net=window.kubanOnlineAlpha,config=net?.currentMatch?.config;
@@ -43,6 +47,7 @@ ai=function(dt){
  }
  if(t>=(mis.zRetarget||0)){mis.zRetarget=t+.8;for(const u of live){if(u.tg&&!u.tg.dead&&u.tg.team<2&&u.o==='a')continue;let target=null,best=Infinity;for(const e of targets){const v=D(u,e)+(e.k==='b'?0:40);if(v<best){best=v;target=e}}if(target){u.tg=target;u.o='a';u.auto=0}}}
 };
-const box=document.createElement('div');box.id='kw-zombie-hud';box.style.cssText='position:fixed;top:48px;left:50%;transform:translateX(-50%);z-index:12;pointer-events:none;background:#171d19e8;color:#f5dc9a;border:1px solid #a48a55;padding:8px 16px;font:bold 14px Arial;text-align:center;border-radius:4px';box.hidden=true;document.body.append(box);
-setInterval(()=>{box.hidden=!run||!active()||!document.getElementById('menu').hidden;if(!box.hidden){const remaining=E.filter(e=>!e.dead&&e.zombie).length+(mis.zRemaining||0);box.textContent='Зомби · '+['Лёгкий','Нормальный','Сложный'][mis.zDifficulty]+' · Волна '+mis.zWave+'/20 · '+(mis.zPhase==='prepare'?'Подготовка: '+Math.max(0,Math.ceil(mis.zNext-t))+' с':'Осталось: '+remaining)}},250);
+window.KWTransferGold=function(amount,team=0){if(!active()||!run||!Number.isSafeInteger(amount)||amount<25||amount>10000||![0,1].includes(team)||gold[team]<amount)return false;gold[team]-=amount;gold[1-team]+=amount;return true};
+const box=document.createElement('div');box.id='kw-zombie-hud';box.style.cssText='position:fixed;top:48px;left:50%;transform:translateX(-50%);z-index:12;pointer-events:auto;background:#171d19e8;color:#f5dc9a;border:1px solid #a48a55;padding:8px 16px;font:bold 14px Arial;text-align:center;border-radius:4px';box.hidden=true;document.body.append(box);const label=document.createElement('span');box.append(label);for(const amount of [100,250,500]){const b=document.createElement('button');b.className='b';b.textContent='Передать '+amount;b.onclick=()=>{const n=window.kubanOnlineAlpha;if(n?.role==='guest')n.transferGold?.(amount);else if(!window.KWTransferGold(amount))toast('Недостаточно золота');};box.append(b)}
+setInterval(()=>{box.hidden=!run||!active()||!document.getElementById('menu').hidden;if(!box.hidden){const remaining=E.filter(e=>!e.dead&&e.zombie).length+(mis.zRemaining||0);label.textContent='Зомби · '+['Лёгкий','Нормальный','Сложный'][mis.zDifficulty]+' · Волна '+mis.zWave+'/20 · '+(mis.zPhase==='prepare'?'Подготовка: '+Math.max(0,Math.ceil(mis.zNext-t))+' с':'Осталось: '+remaining)}},250);
 })();
