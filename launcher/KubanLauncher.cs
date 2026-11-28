@@ -41,7 +41,7 @@ class Launcher : Form {
   var title=new Label(){Text="ВОЙНА ЗА КУБАНЬ",Font=new Font("Georgia",24,FontStyle.Bold),ForeColor=Color.Wheat,BackColor=Color.Transparent,TextAlign=ContentAlignment.MiddleCenter};
   canvas.Controls.Add(title);
   var section=new Label(){Text="НОВОСТИ",Font=new Font("Georgia",16,FontStyle.Bold),ForeColor=Color.Wheat,BackColor=Color.FromArgb(12,19,30),TextAlign=ContentAlignment.MiddleLeft};
-  var newsBtn=new Button(), updatesBtn=new Button(), settingsBtn=new Button();
+  Button newsBtn=new Button(), updatesBtn=new Button(), settingsBtn=new Button();
   foreach(var pair in new[]{new{Button=newsBtn,Text="Новости"},new{Button=updatesBtn,Text="Обновления"},new{Button=settingsBtn,Text="Настройки"}})Setup(pair.Button,pair.Text,canvas);
   Setup(play,"Скачать игру",canvas);Setup(check,"Проверить файлы",canvas);Setup(pause,"Приостановить",canvas);
   foreach(var l in new[]{version,status,folder}){l.ForeColor=Color.Wheat;l.BackColor=Color.FromArgb(12,19,30);l.TextAlign=ContentAlignment.MiddleLeft;canvas.Controls.Add(l);}
