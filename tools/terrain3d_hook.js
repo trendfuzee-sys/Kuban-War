@@ -27,11 +27,11 @@
  ready=false;if(!enabled||failed||!map)return false;
  try{
  renderer??=window.KWTerrain3D.create();
- const quality=window.KWQuality3D.preset(qualityLevel??ST.q),resolution=adaptive.sample(performance.now());
+ const resolution=adaptive.sample(performance.now()),network=!!window.kubanOnlineAlpha?.currentMatch,baseQuality=window.KWQuality3D.preset(qualityLevel??ST.q),quality=network&&qualityLevel===null?{...baseQuality,actors:Math.min(baseQuality.actors,Math.round(140*resolution)),shadows:baseQuality.shadows&&resolution>.85}:baseQuality;
  const flat=mis?.ci===4||terrainBiome()==='cellar'||!!layout?.river;
  const mask=(x,y)=>(PONDS||[]).some(p=>((x-p[0])/(p[2]+28))**2+((y-p[1])/(p[3]+28))**2<1)||layout?.bases?.some(b=>Math.hypot(x-b.x,y-b.y)<160);
  const margin=160+((angle||tilt!==1)?Math.hypot(w,h):0),visible=o=>o.x>=x-margin&&o.x<=x+w+margin&&o.y>=y-margin&&o.y<=y+h+margin;
- const objects=E.filter(e=>e.k==='b'&&!e.dead&&e.pg>=1&&['h','b','s','t','w','l'].includes(e.ty)&&visible(e)&&known(e));
+ const objects=E.filter(e=>e.k==='b'&&!e.dead&&(e.pg==null||e.pg>=1)&&['h','b','s','t','w','l'].includes(e.ty)&&visible(e)&&known(e));
  const decors=DEC.filter((d,i)=>visible(d)&&((i*37)%100)<quality.decor*100);
  const seaMode=mis?.ci===4&&!!naval,theme=terrainBiome(),props=seaMode?[]:(layout?.props||[]).filter(visible),obstacles=seaMode?[]:(layout?.obstacles||[]).filter(visible);
  const key=quality.decor+'|'+theme+'|'+props.map(p=>[p.x,p.y,p.type,p.variant,p.name].join(',')).join(';')+'|'+obstacles.map(o=>[o.x,o.y,o.rx,o.ry].join(',')).join(';')+'|'+objects.map(e=>[e.id,e.x,e.y,e.r,e.race,e.ty,e.team].join(',')).join(';')+'|'+decors.map(d=>[d.x,d.y,d.t,d.s].join(',')).join(';');
