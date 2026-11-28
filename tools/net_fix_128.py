@@ -71,7 +71,7 @@ function kwStartClock(n){
   n.simTimer=setInterval(()=>{
     if(!alive(n)||!run)return;
     const now=performance.now();acc=Math.min(.25,acc+Math.max(0,(now-previous)/1000));previous=now;
-    let count=0;while(acc>=1/30&&count++<6&&alive(n)&&run){acc-=1/30;const p=paused;paused=0;try{baseTick(1/30)}catch(e){console.error('[simulation clock]',e);exitNetwork();break}finally{if(run)paused=p}}
+    let count=0;while(acc>=1/30&&count++<6&&alive(n)&&run){acc-=1/30;const p=paused;paused=0;try{baseTick(1/30);n.simFaults=0}catch(e){console.error('[simulation clock]',e);try{localStorage.setItem('kw.lastNetError',JSON.stringify({time:new Date().toISOString(),stage:'simulation',message:String(e),stack:String(e?.stack||'')}))}catch(_){};n.simFaults=(n.simFaults||0)+1;acc=0;if(n.simFaults>=8){clearInterval(n.simTimer);toast('Симуляция остановлена: '+String(e.message||e));console.error('[Kuban] repeated simulation fault')}break}finally{if(run)paused=p}}
   },15);
 }
 tick=function(dt){
