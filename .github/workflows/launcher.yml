@@ -24,10 +24,24 @@ jobs:
       - name: Compile
         shell: cmd
         run: launcher\build.cmd
+      - name: Self-signed Authenticode integrity signature
+        shell: pwsh
+        run: |
+          $cert = New-SelfSignedCertificate -Subject 'CN=Kuban War (Self-Signed)' -Type CodeSigningCert -CertStoreLocation 'Cert:\CurrentUser\My' -KeyAlgorithm RSA -KeyLength 3072 -HashAlgorithm SHA256 -KeyExportPolicy NonExportable -NotAfter (Get-Date).AddYears(1)
+          try {
+            $sig = Set-AuthenticodeSignature -FilePath launcher/KubanLauncher.exe -Certificate $cert -HashAlgorithm SHA256
+            if ($null -eq $sig.SignerCertificate -or $sig.SignerCertificate.Thumbprint -ne $cert.Thumbprint) { throw 'Signature missing or incorrect' }
+            Export-Certificate -Cert $cert -FilePath launcher/KubanWar-Publisher.cer | Out-Null
+            Write-Host "Authenticode status: $($sig.Status); self-signed, not publicly trusted"
+          } finally {
+            Remove-Item -Path ("Cert:\CurrentUser\My\" + $cert.Thumbprint)
+          }
       - uses: actions/upload-artifact@v4
         with:
           name: KubanLauncher-Windows
-          path: launcher/KubanLauncher.exe
+          path: |
+            launcher/KubanLauncher.exe
+            launcher/KubanWar-Publisher.cer
           if-no-files-found: error
 
       - name: SHA256 checksum
@@ -40,11 +54,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tag = 'launcher-v2.1.0'
+          $tag = 'launcher-v2.1.1'
           gh release view $tag *> $null
           if ($LASTEXITCODE -ne 0) {
-            gh release create $tag --title 'Kuban Launcher Classic 2.1' --notes 'Source-built classic launcher with original media and incremental file updates. Unsigned; antivirus verification pending.' --latest=false
+            gh release create $tag --title 'Kuban Launcher Classic 2.1.1' --notes 'Source-built classic launcher with original media and incremental file updates. Self-signed Authenticode; not publicly trusted. Antivirus verification pending.' --latest=false
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
-          gh release upload $tag launcher/KubanLauncher.exe launcher/SHA256SUMS.txt --clobber
+          gh release upload $tag launcher/KubanLauncher.exe launcher/SHA256SUMS.txt launcher/KubanWar-Publisher.cer --clobber
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
