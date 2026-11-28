@@ -147,7 +147,7 @@ replace("function configFromPanel(){const root=online.panel;", """function kwCho
 function kwSelectedRace(){return localStorage.getItem('kuban.online.race')||DEFAULT_CFG.hostRace}
 function kwNick(){return saveNick().slice(0,14).replace(/~/g,'')+'~'+kwSelectedRace()}
 function configFromPanel(){const root=online.panel;""")
-replace("hostRace:root.querySelector('[data-host-race]')?.value||DEFAULT_CFG.hostRace,guestRace:root.querySelector('[data-guest-race]')?.value||DEFAULT_CFG.guestRace", "hostRace:kwChoice(online.lobbyState.players.find(p=>p.user_id===online.lobbyState.room.host_id)).race||DEFAULT_CFG.hostRace,guestRace:kwChoice(online.lobbyState.players.find(p=>p.user_id!==online.lobbyState.room.host_id)).race||DEFAULT_CFG.guestRace")
+replace("hostRace:root.querySelector('[data-host-race]')?.value||DEFAULT_CFG.hostRace,guestRace:root.querySelector('[data-guest-race]')?.value||DEFAULT_CFG.guestRace", "hostRace:root.querySelector('[data-host-race]')?.value||kwChoice(online.lobbyState.players.find(p=>p.user_id===online.lobbyState.room.host_id)).race||DEFAULT_CFG.hostRace,guestRace:root.querySelector('[data-guest-race]')?.value||kwChoice(online.lobbyState.players.find(p=>p.user_id!==online.lobbyState.room.host_id)).race||DEFAULT_CFG.guestRace")
 replace("online.currentRoom=state.room;const box=", "online.currentRoom=state.room;online.lobbyState=state;const box=")
 replace("p_nickname:saveNick()", "p_nickname:kwNick()") if s.count("p_nickname:saveNick()")==1 else None
 s=s.replace("p_nickname:saveNick()", "p_nickname:kwNick()")
@@ -155,11 +155,11 @@ replace("?.nickname||'—')", "?.nickname?.split('~')[0]||'—')")
 replace("\x60\x24{p.nickname}\x24{p.user_id", "\x60\x24{kwChoice(p).name} · \x24{RACE_NAMES[kwChoice(p).race]||'—'}\x24{p.user_id")
 replace("const myReady=!!state.mine?.ready;", """const myReady=!!state.mine?.ready;
 if(!state.match||state.match.status!=='running'){
- const chooser=html('div',null,'kw-online-config');chooser.innerHTML='<h2>Ваша фракция</h2>'+raceSelectMarkup(kwChoice(state.mine).race||kwSelectedRace(),'data-my-race');
- const select=chooser.querySelector('select');select.disabled=myReady;select.onchange=()=>{localStorage.setItem('kuban.online.race',select.value);guarded(async()=>{await patch('kuban_players?user_id=eq.'+encodeURIComponent(state.me),{nickname:kwNick()});const rows=await get('kuban_players?select=nickname&user_id=eq.'+encodeURIComponent(state.me));if(rows[0]?.nickname!==kwNick())throw Error('Не удалось сохранить фракцию. Проверьте права обновления профиля.');await refreshLobby()})};box.append(chooser);
+ const chooser=html('div',null,'kw-online-config');chooser.innerHTML='<h2>Ваша фракция</h2>'+raceSelectMarkup(kwSelectedRace()||kwChoice(state.mine).race,'data-my-race');
+ const select=chooser.querySelector('select');select.disabled=myReady;select.onchange=()=>{localStorage.setItem('kuban.online.race',select.value);guarded(async()=>{try{await rpc('kuban_choose_faction',{p_room_id:state.room.id,p_faction:select.value})}catch(err){await patch('kuban_players?user_id=eq.'+encodeURIComponent(state.me)+'&room_id=eq.'+encodeURIComponent(state.room.id),{nickname:kwNick()})}const rows=await get('kuban_players?select=nickname&user_id=eq.'+encodeURIComponent(state.me));if(kwChoice(rows[0]).race!==select.value){setStatus('Выбор сохранён локально. Сервер не разрешает изменение фракции; хост может выбрать её в настройках матча.');return}await refreshLobby()})};box.append(chooser);
 }""")
-replace("<label>Раса хоста \x24{raceSelectMarkup(DEFAULT_CFG.hostRace,'data-host-race')}</label><label>Раса гостя \x24{raceSelectMarkup(DEFAULT_CFG.guestRace,'data-guest-race')}</label>","")
-replace("players.every(p=>p.ready)&&room.host_id", "players.every(p=>p.ready&&kwChoice(p).race)&&room.host_id")
+replace("<label>Раса хоста \x24{raceSelectMarkup(DEFAULT_CFG.hostRace,'data-host-race')}</label><label>Раса гостя \x24{raceSelectMarkup(DEFAULT_CFG.guestRace,'data-guest-race')}</label>","<label>Фракция хоста \x24{raceSelectMarkup(kwChoice(state.players.find(p=>p.user_id===state.room.host_id)).race||kwSelectedRace(),'data-host-race')}</label><label>Фракция второго игрока \x24{raceSelectMarkup(kwChoice(state.players.find(p=>p.user_id!==state.room.host_id)).race||DEFAULT_CFG.guestRace,'data-guest-race')}</label>")
+replace("players.every(p=>p.ready)&&room.host_id", "players.every(p=>p.ready)&&room.host_id")
 # Keep selection intentionally empty rather than forcing the hero on every update.
 replace("if(!sel.length){const h=E.find", "if(first&&!sel.length){const h=E.find")
 
