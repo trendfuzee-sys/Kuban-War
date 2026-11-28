@@ -12,6 +12,15 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Extract original media without executing old launcher
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download v1.0.0 --pattern KubanWarLauncher.exe --dir "$env:RUNNER_TEMP\classic"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python launcher/extract_classic_assets.py "$env:RUNNER_TEMP\classic\KubanWarLauncher.exe"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Compile
         shell: cmd
         run: launcher\build.cmd
@@ -21,16 +30,21 @@ jobs:
           path: launcher/KubanLauncher.exe
           if-no-files-found: error
 
+      - name: SHA256 checksum
+        shell: pwsh
+        run: |
+          $hash = (Get-FileHash launcher/KubanLauncher.exe -Algorithm SHA256).Hash.ToLower()
+          "$hash  KubanLauncher.exe" | Set-Content -Encoding ascii launcher/SHA256SUMS.txt
       - name: Publish launcher download
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tag = 'launcher-v2.0.0'
+          $tag = 'launcher-v2.1.0'
           gh release view $tag *> $null
           if ($LASTEXITCODE -ne 0) {
-            gh release create $tag --title 'Kuban Launcher 2.0' --notes 'Incremental file updates with SHA256 verification' --latest=false
+            gh release create $tag --title 'Kuban Launcher Classic 2.1' --notes 'Source-built classic launcher with original media and incremental file updates. Unsigned; antivirus verification pending.' --latest=false
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
-          gh release upload $tag launcher/KubanLauncher.exe --clobber
+          gh release upload $tag launcher/KubanLauncher.exe launcher/SHA256SUMS.txt --clobber
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
