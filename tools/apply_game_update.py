@@ -70,6 +70,7 @@ if html.exists():
             raise RuntimeError('Unexpected dialogue module or HTML body')
         page = page.replace('</body>', tag+'</body>', 1)
     html.write_text(page, encoding='utf-8')
+    subprocess.run([sys.executable, str(pathlib.Path(__file__).with_name('install_zombie_coop.py')), str(html)], check=True)
     scripts = re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', html.read_text(encoding='utf-8'), re.S|re.I)
     if not scripts:
         raise RuntimeError('No game scripts')
