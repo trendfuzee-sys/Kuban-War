@@ -90,7 +90,7 @@ replace("FX:FX.map(f=>shallowSanitize(f))}}","FX:FX.slice(-300).map(f=>shallowSa
 replace("if(c.ARAB)c.ARAB=[c.ARAB[1],c.ARAB[0]];",
         "if(c.ARAB)c.ARAB=[c.ARAB[1],c.ARAB[0]];if(c.factionState)c.factionState=[c.factionState[1],c.factionState[0]];if(c.herbPatches)for(const h of c.herbPatches)if(h.T===0||h.T===1)h.T=1-h.T;")
 # Stable identity, correct selection, faction UI and render interpolation.
-between("function applySnapshot(raw){","function battleCfgFromMatch(match){", """function renderPoint(v,now){const f=Math.max(0,Math.min(1,(now-v.at)/v.duration));return {x:v.x+(v.tx-v.x)*f,y:v.y+(v.ty-v.y)*f}}
+between("function applySnapshot(raw){","function battleCfgFromMatch(match){", """function renderPoint(v,now){const elapsed=Math.max(0,now-v.at),f=Math.min(1,elapsed/v.duration),extra=Math.min(100,Math.max(0,elapsed-v.duration))/1000;return {x:Math.max(0,Math.min(WW,v.x+(v.tx-v.x)*f+(v.vx||0)*extra)),y:Math.max(0,Math.min(WH,v.y+(v.ty-v.y)*f+(v.vy||0)*extra)),ph:(v.ph||0)+(v.phaseRate||0)*(elapsed/1000)}}
 function applySnapshot(raw){
   const n=net,snap=swapPerspectiveSnapshot(raw),now=clock(),first=!n.lastSeq;
   const wanted=first?[]:(sel?.map?.(u=>u.id)||[]);
@@ -99,7 +99,7 @@ function applySnapshot(raw){
   if(Array.isArray(snap.factionState))factionState=snap.factionState;
   if(Array.isArray(snap.herbPatches))herbPatches=snap.herbPatches;
   const existing=new Map((E||[]).map(e=>[e.id,e])),map=new Map(),next=[],visual=new Map();
-  const duration=Math.max(45,Math.min(300,n.lastApplied?now-n.lastApplied:100));
+  const gap=Math.max(35,Math.min(500,n.lastApplied?now-n.lastApplied:100));n.frameGap=(n.frameGap||gap)*.8+gap*.2;const duration=Math.max(50,Math.min(260,n.frameGap*1.1));
   for(const rawEntity of snap.E){
     if(!Number.isSafeInteger(rawEntity.id)||map.has(rawEntity.id))throw Error('Invalid entity ID');
     const prior=existing.get(rawEntity.id),same=prior&&prior.k===rawEntity.k&&prior.race===rawEntity.race;
@@ -107,7 +107,7 @@ function applySnapshot(raw){
     if(rawEntity.k==='u'&&Number.isFinite(rawEntity.x)&&Number.isFinite(rawEntity.y)){
       const old=n.visual.get(rawEntity.id),pos=old?renderPoint(old,now):{x:rawEntity.x,y:rawEntity.y};
       const smooth=!first&&same&&Math.hypot(pos.x-rawEntity.x,pos.y-rawEntity.y)<180;
-      visual.set(rawEntity.id,{x:smooth?pos.x:rawEntity.x,y:smooth?pos.y:rawEntity.y,tx:rawEntity.x,ty:rawEntity.y,at:now,duration});
+      const seconds=Math.max(.035,gap/1000),moving=smooth&&Math.hypot(rawEntity.x-prior.x,rawEntity.y-prior.y)>1;let vx=moving?(rawEntity.x-prior.x)/seconds:0,vy=moving?(rawEntity.y-prior.y)/seconds:0;const speed=Math.hypot(vx,vy),limit=Math.max(30,(rawEntity.sp||80)*1.3);if(speed>limit){vx*=limit/speed;vy*=limit/speed}visual.set(rawEntity.id,{x:smooth?pos.x:rawEntity.x,y:smooth?pos.y:rawEntity.y,tx:rawEntity.x,ty:rawEntity.y,at:now,duration,vx,vy,ph:smooth&&Number.isFinite(pos.ph)?pos.ph:rawEntity.ph||0,phaseRate:moving?Math.min(24,Math.hypot(vx,vy)*.16):0});
     }
   }
   for(let i=0;i<snap.E.length;i++){
@@ -126,10 +126,10 @@ draw=function(...args){
   const n=net;if(!n||online.role!=='guest'||!n.lastSeq||!run)return netDraw(...args);
   const now=clock(),restore=[],oldT=t;
   try{
-    for(const e of E){const v=n.visual.get(e.id);if(!v)continue;const pos=renderPoint(v,now);restore.push([e,e.x,e.y]);e.x=pos.x;e.y=pos.y}
-    t=oldT+Math.min(.2,Math.max(0,(now-n.lastApplied)/1000));
+    for(const e of E){const v=n.visual.get(e.id);if(!v)continue;const pos=renderPoint(v,now);restore.push([e,e.x,e.y,e.ph,e.mt]);e.x=pos.x;e.y=pos.y;e.ph=pos.ph;if(v.phaseRate&&now-v.at<v.duration+100)e.mt=t}
+    t=Math.max(n.renderTime||0,oldT+Math.min(.25,Math.max(0,(now-n.lastApplied)/1000)));n.renderTime=t;
     return netDraw(...args);
-  }finally{t=oldT;for(const [e,x,y] of restore){e.x=x;e.y=y}}
+  }finally{t=oldT;for(const [e,x,y,ph,mt] of restore){e.x=x;e.y=y;e.ph=ph;e.mt=mt}}
 };
 """)
 replace("function hostPerspectiveSwap(fn){const oldSel=sel, oldPlace=place;",
