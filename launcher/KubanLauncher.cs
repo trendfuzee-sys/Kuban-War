@@ -13,7 +13,7 @@ using System.Windows.Forms;
 using System.Web.Script.Serialization;
 using System.Security.Cryptography;
 
-class Entry { public string path {get;set;} public string asset {get;set;} public string sha256 {get;set;} public long size {get;set;} }
+class Entry { public string path {get;set;} public string asset {get;set;} public string sha256 {get;set;} public long size {get;set;} public long offset {get;set;} }
 class Manifest { public string version {get;set;} public string exe {get;set;} public List<Entry> files {get;set;} }
 class Asset { public string name {get;set;} public string browser_download_url {get;set;} }
 class Release { public string tag_name {get;set;} public string name {get;set;} public string body {get;set;} public string published_at {get;set;} public List<Asset> assets {get;set;} }
@@ -30,7 +30,7 @@ class Launcher : Form {
  CancellationTokenSource cancel; bool busy, online; Process game;
  [STAThread] static void Main(){Application.EnableVisualStyles();Application.SetCompatibleTextRenderingDefault(false);Application.Run(new Launcher());}
  Launcher(){
-  ServicePointManager.SecurityProtocol=SecurityProtocolType.Tls12; http.DefaultRequestHeaders.UserAgent.ParseAdd("KubanLauncher/1.0"); http.Timeout=TimeSpan.FromMinutes(10);
+  ServicePointManager.SecurityProtocol=SecurityProtocolType.Tls12; http.DefaultRequestHeaders.UserAgent.ParseAdd("KubanLauncher/2.0"); http.Timeout=TimeSpan.FromMinutes(10);
   Directory.CreateDirectory(Data); root=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"KubanWarGame");
   string cfg=Path.Combine(Data,"folder.txt"); if(File.Exists(cfg))root=File.ReadAllText(cfg);
   if(File.Exists(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,exeName)) && !File.Exists(cfg))root=AppDomain.CurrentDomain.BaseDirectory;
@@ -70,9 +70,9 @@ class Launcher : Form {
    changes.Text=release.name+" • "+release.published_at+"\n\n"+release.body;
    manifest=json.Deserialize<Manifest>(await http.GetStringAsync(AssetUrl("manifest.json")));
    if(manifest.files==null||manifest.files.Count==0||manifest.files.Count>10000||!System.Text.RegularExpressions.Regex.IsMatch(manifest.version??"",@"^[0-9]+\.[0-9]+\.[0-9]+$"))throw new Exception("Некорректный манифест");
-   if(manifest.exe!=exeName||!manifest.files.Any(x=>x.path==exeName))throw new Exception("EXE отсутствует в манифесте");
-   var seen=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-   foreach(var e in manifest.files){Safe(root,e.path);if(!seen.Add(e.path)||e.size<0||!System.Text.RegularExpressions.Regex.IsMatch(e.sha256??"","^[a-f0-9]{64}$"))throw new Exception("Некорректная запись манифеста");AssetUrl(e.asset);}
+   if(String.IsNullOrEmpty(manifest.exe)||manifest.exe.Contains("/")||!manifest.exe.EndsWith(".exe",StringComparison.OrdinalIgnoreCase)||!manifest.files.Any(x=>x.path==manifest.exe))throw new Exception("EXE отсутствует в манифесте");
+   exeName=manifest.exe;var seen=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+   foreach(var e in manifest.files){Safe(root,e.path);if(!seen.Add(e.path)||e.size<0||e.offset<0||e.offset>long.MaxValue-e.size||!System.Text.RegularExpressions.Regex.IsMatch(e.sha256??"","^[a-f0-9]{64}$"))throw new Exception("Некорректная запись манифеста");AssetUrl(e.asset);}
    pending=await Task.Run(()=>manifest.files.Where(e=>!Valid(Safe(root,e.path),e)).ToList());
    online=true;version.Text=(pending.Count==0?"Установленная версия: ":"Доступная версия: ")+manifest.version;status.Text=pending.Count==0?"Игра актуальна.":String.Format("К загрузке: {0} файлов • {1:F1} МБ",pending.Count,pending.Sum(e=>e.size)/1048576.0);
   }catch(Exception e){status.Text="Обновления недоступны: "+e.Message;version.Text=File.Exists(GameExe())?"Офлайн • установленная игра":"Нет опубликованной сборки";}
@@ -86,7 +86,7 @@ class Launcher : Form {
   try{
    Directory.CreateDirectory(root);Directory.CreateDirectory(stage);long total=pending.Sum(e=>e.size),done=0;var watch=Stopwatch.StartNew();
    foreach(var e in pending){ct.ThrowIfCancellationRequested();string p=Safe(stage,e.path);Directory.CreateDirectory(Path.GetDirectoryName(p));
-    if(!Valid(p,e)){string tmp=p+".part";using(var response=await http.GetAsync(AssetUrl(e.asset),HttpCompletionOption.ResponseHeadersRead,ct)){response.EnsureSuccessStatusCode();using(var input=await response.Content.ReadAsStreamAsync())using(var output=new FileStream(tmp,FileMode.Create,FileAccess.Write,FileShare.None,65536,true)){byte[] buffer=new byte[65536];int count;long current=0;while((count=await input.ReadAsync(buffer,0,buffer.Length,ct))>0){await output.WriteAsync(buffer,0,count,ct);current+=count;if(current>e.size)throw new Exception("Размер превышен");progress.Value=(int)Math.Min(100,(done+current)*100.0/Math.Max(1,total));status.Text=String.Format("{0:F1} / {1:F1} МБ • {2:F1} МБ/с", (done+current)/1048576.0,total/1048576.0,(done+current)/1048576.0/Math.Max(1,watch.Elapsed.TotalSeconds));}}}if(!Valid(tmp,e))throw new Exception("Ошибка контрольной суммы: "+e.path);if(File.Exists(p))File.Delete(p);File.Move(tmp,p);}
+    if(!Valid(p,e)){string tmp=p+".part";if(e.size==0)File.WriteAllBytes(tmp,new byte[0]);else using(var request=new HttpRequestMessage(HttpMethod.Get,AssetUrl(e.asset))){if(e.asset=="files.pack"&&e.size>0)request.Headers.Range=new System.Net.Http.Headers.RangeHeaderValue(e.offset,e.offset+e.size-1);using(var response=await http.SendAsync(request,HttpCompletionOption.ResponseHeadersRead,ct)){response.EnsureSuccessStatusCode();if(e.asset=="files.pack"&&(response.StatusCode!=HttpStatusCode.PartialContent||response.Content.Headers.ContentRange==null||response.Content.Headers.ContentRange.From!=e.offset||response.Content.Headers.ContentRange.To!=e.offset+e.size-1))throw new Exception("Сервер не поддерживает частичную загрузку файлов");using(var input=await response.Content.ReadAsStreamAsync())using(var output=new FileStream(tmp,FileMode.Create,FileAccess.Write,FileShare.None,65536,true)){byte[] buffer=new byte[65536];int count;long current=0;while((count=await input.ReadAsync(buffer,0,buffer.Length,ct))>0){await output.WriteAsync(buffer,0,count,ct);current+=count;if(current>e.size)throw new Exception("Размер превышен");progress.Value=(int)Math.Min(100,(done+current)*100.0/Math.Max(1,total));status.Text=String.Format("{0:F1} / {1:F1} МБ • {2:F1} МБ/с", (done+current)/1048576.0,total/1048576.0,(done+current)/1048576.0/Math.Max(1,watch.Elapsed.TotalSeconds));}}}}if(!Valid(tmp,e))throw new Exception("Ошибка контрольной суммы: "+e.path);if(File.Exists(p))File.Delete(p);File.Move(tmp,p);}
     done+=e.size;
    }
    ct.ThrowIfCancellationRequested();if(Running())throw new Exception("Игра запущена");pause.Enabled=false;
