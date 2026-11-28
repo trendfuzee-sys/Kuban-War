@@ -177,8 +177,8 @@ replace("sendCommand('issue',{ids,x:wx,y:wy,am:!!am});FX.push({ty:'r',x:wx,y:wy,
 replace("sendCommand('rally',{ids:buildings,x:wx,y:wy});toast('Точка сбора отправлена');","sendCommand('rally',{ids:buildings,x:wx,y:wy});kwLocalClick(wx,wy,22,.7,'#f5d477');toast('Точка сбора отправлена');")
 replace("function renderPoint(v,now){","function kwLocalClick(x,y,rad,l,c){if(!net)return;(net.localClicks??=[]).push({ty:'r',localInput:true,x,y,rad,l,c,until:clock()+l*1000});}\nfunction renderPoint(v,now){")
 replace("const now=clock(),restore=[],oldT=t;","const now=clock(),restore=[],oldT=t,oldFX=FX;")
-replace("t=Math.max(n.renderTime||0,oldT+Math.min(.25,Math.max(0,(now-n.lastApplied)/1000)));n.renderTime=t;","t=oldT+Math.min(.2,Math.max(0,(now-n.lastApplied)/1000));n.localClicks=(n.localClicks||[]).filter(f=>f.until>now);FX=oldFX.concat(n.localClicks.map(f=>({...f,l:(f.until-now)/1000})));")
-replace("}finally{t=oldT;for(const [e,x,y] of restore)","}finally{FX=oldFX;t=oldT;for(const [e,x,y] of restore)")
+replace("t=Math.max(n.renderTime||0,oldT+Math.min(.25,Math.max(0,(now-n.lastApplied)/1000)));n.renderTime=t;","t=Math.max(n.renderTime||0,oldT+Math.min(.25,Math.max(0,(now-n.lastApplied)/1000)));n.renderTime=t;n.localClicks=(n.localClicks||[]).filter(f=>f.until>now);FX=oldFX.concat(n.localClicks.map(f=>({...f,l:(f.until-now)/1000})));")
+replace("}finally{t=oldT;for(const [e,x,y,ph,mt] of restore)","}finally{FX=oldFX;t=oldT;for(const [e,x,y,ph,mt] of restore)")
 
 # The later positional-audio mixer replaces the original say() at runtime.
 replace("say=function(id,act,pr,source){if(!id", "say=function(id,act,pr,source){if(window.kubanOnlineAlpha?.remoteInput)return;if(!id")
