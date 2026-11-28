@@ -41,4 +41,5 @@ jobs:
           test -n "$base"
           gh release download "$base" --pattern KubanWar.zip --dir /tmp/kuban-base
           python3 tools/apply_game_update.py /tmp/kuban-base/KubanWar.zip game-update KubanWar.zip
-          gh release create "$version" KubanWar.zip --target "$GITHUB_SHA" --title "Kuban War $version" --notes-file game-update/notes.txt --latest
+          python3 tools/build_update_manifest.py KubanWar.zip "$version" /tmp/kuban-update
+          gh release create "$version" KubanWar.zip /tmp/kuban-update/manifest.json /tmp/kuban-update/files.pack --target "$GITHUB_SHA" --title "Kuban War $version" --notes-file game-update/notes.txt --latest
