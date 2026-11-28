@@ -8,7 +8,7 @@ start=function(...args){
  const net=window.kubanOnlineAlpha,config=net?.currentMatch?.config;
  const result=originalStart(...args);
  if(!run||args[3]!==-1||config?.mode!=='zombies')return result;
- mis.zombies=true;mis.zDifficulty=Math.max(0,Math.min(2,Number(config.zDifficulty)||0));mis.zWave=0;mis.zRemaining=0;mis.zNext=t+120;mis.zSpawnAt=t;mis.zPhase='prepare';
+ mis.zombies=true;mis.zDifficulty=([0,1,2].includes(Number(config.zDifficulty))?Number(config.zDifficulty):1);mis.zWave=0;mis.zRemaining=0;mis.zNext=t+120;mis.zSpawnAt=t;mis.zPhase='prepare';
  E=E.filter(e=>e.team<2||e.k==='m');
  const d=settings[mis.zDifficulty];gold[0]=gold[1]=d.gold;
  // Both bases remain separately owned; neutral team 2 is the hostile horde.
@@ -30,7 +30,7 @@ ai=function(dt){
  if(!targets.length)return;
  if(mis.zRemaining===0&&!live.length){
   if(mis.zPhase==='fight'){mis.zPhase='prepare';mis.zNext=t+d.rest;gold[0]+=100+mis.zWave*15;gold[1]+=100+mis.zWave*15;}
-  if(t>=mis.zNext&&mis.zWave<20){mis.zWave++;mis.zRemaining=Math.round(Math.min(180,20+(mis.zWave-1)*8.5)*d.count);mis.zPhase='fight';mis.zSpawnAt=t;toast('Орда '+mis.zWave+' / 20');}
+  if(t>=mis.zNext&&mis.zWave<20){mis.zWave++;mis.zRemaining=Math.round(Math.min(180,20+(mis.zWave-1)*160/19)*d.count);mis.zPhase='fight';mis.zSpawnAt=t;toast('Орда '+mis.zWave+' / 20');}
  }
  if(mis.zRemaining>0&&t>=mis.zSpawnAt&&live.length<120){
   mis.zSpawnAt=t+.65;
@@ -40,7 +40,7 @@ ai=function(dt){
    const u=unit(2,'nov',0,p.x,p.y);hauntedStyle(u,0);u.zombie=true;u.nm='Зомби';u.mh=Math.round((65+mis.zWave*5)*d.hp);u.hp=u.mh;u.dmg=(8+mis.zWave*.55)*d.damage;u.sp=65+Math.min(18,mis.zWave);u.gd=18;u.sn='agg';mis.zRemaining--;
   }
  }
- if(t>=(mis.zRetarget||0)){mis.zRetarget=t+.8;for(const u of live){if(u.tg&&!u.tg.dead&&u.o==='a')continue;let target=null,best=Infinity;for(const e of targets){const v=D(u,e)+(e.k==='b'?0:40);if(v<best){best=v;target=e}}if(target){u.tg=target;u.o='a';u.auto=0}}}
+ if(t>=(mis.zRetarget||0)){mis.zRetarget=t+.8;for(const u of live){if(u.tg&&!u.tg.dead&&u.tg.team<2&&u.o==='a')continue;let target=null,best=Infinity;for(const e of targets){const v=D(u,e)+(e.k==='b'?0:40);if(v<best){best=v;target=e}}if(target){u.tg=target;u.o='a';u.auto=0}}}
 };
 const box=document.createElement('div');box.id='kw-zombie-hud';box.style.cssText='position:fixed;top:48px;left:50%;transform:translateX(-50%);z-index:12;pointer-events:none;background:#171d19e8;color:#f5dc9a;border:1px solid #a48a55;padding:8px 16px;font:bold 14px Arial;text-align:center;border-radius:4px';box.hidden=true;document.body.append(box);
 setInterval(()=>{box.hidden=!run||!active()||!document.getElementById('menu').hidden;if(!box.hidden){const remaining=E.filter(e=>!e.dead&&e.zombie).length+(mis.zRemaining||0);box.textContent='Зомби · '+['Лёгкий','Нормальный','Сложный'][mis.zDifficulty]+' · Волна '+mis.zWave+'/20 · '+(mis.zPhase==='prepare'?'Подготовка: '+Math.max(0,Math.ceil(mis.zNext-t))+' с':'Осталось: '+remaining)}},250);
