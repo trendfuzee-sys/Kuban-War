@@ -1,0 +1,22 @@
+from pathlib import Path
+import sys
+p=Path(sys.argv[1])
+s=p.read_text(encoding="utf-8")
+def replace(a,b):
+    global s
+    if s.count(a)!=1: raise RuntimeError("Unexpected co-op anchor: "+a)
+    s=s.replace(a,b,1)
+if "KW_ZOMBIE_COOP" not in s:
+    replace("const cfg={protocol:128,","const cfg={protocol:root.querySelector('[data-mode]')?.value==='zombies'?129:128,mode:root.querySelector('[data-mode]')?.value||'pvp',zDifficulty:Number(root.querySelector('[data-zdifficulty]')?.value??1),")
+    replace("'biome','neutral'])","'biome','neutral','mode','zdifficulty'])")
+    replace("<hr><h2>Настройки матча</h2>","<hr><h2>Настройки матча</h2><label>Режим <select data-mode><option value='pvp'>Дуэль 1 на 1</option><option value='zombies'>Зомби: Последний рубеж — кооператив</option></select></label><label>Сложность орд <select data-zdifficulty><option value='0'>Лёгкая</option><option value='1' selected>Нормальная</option><option value='2'>Сложная</option></select></label>")
+    replace("cfg.biome??'random'","cfg.mode==='zombies'?'0':(cfg.biome??'random')")
+    replace("e.dead||e.team==u.team||(e.k","e.dead||(window.KWCoopAllied?.(e.team,u.team)??e.team==u.team)||(e.k")
+    replace("!u.dead&&u.team!==b.team&&!u.village","!u.dead&&!(window.KWCoopAllied?.(u.team,b.team)??u.team===b.team)&&!u.village")
+    replace("p&&(p.k=='u'||p.k=='b')&&p.team!=0","p&&(p.k=='u'||p.k=='b')&&!(window.KWCoopAllied?.(p.team,0)??p.team===0)")
+    replace("e.k=='u'&&e.team!=h.team&&!e.dead","e.k=='u'&&!(window.KWCoopAllied?.(e.team,h.team)??e.team===h.team)&&!e.dead")
+    replace("function hit(tg,dm,s){if(tg.dead)return;","function hit(tg,dm,s){if(tg.dead||window.KWCoopAllied?.(tg.team,s?.team)&&tg.team!==s?.team)return;")
+    replace("if(e.team!=0||e.dead)continue;const r=e.k=='b'","if(!(window.KWCoopAllied?.(e.team,0)??e.team===0)||e.dead)continue;const r=e.k=='b'")
+    module=Path(__file__).with_name("zombie_coop.js").read_text(encoding="utf-8")
+    replace("</body>","<script>/* KW_ZOMBIE_COOP */\n"+module+"\n</script></body>")
+p.write_text(s,encoding="utf-8")
