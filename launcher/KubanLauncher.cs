@@ -35,22 +35,34 @@ class Launcher : Form {
   string cfg=Path.Combine(Data,"folder.txt"); if(File.Exists(cfg))root=File.ReadAllText(cfg);
   if(File.Exists(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,exeName)) && !File.Exists(cfg))root=AppDomain.CurrentDomain.BaseDirectory;
   Text="Война за Кубань • Classic Launcher 2.1"; Width=1000; Height=650; MinimumSize=new Size(720,500); BackColor=Color.FromArgb(25,29,30); ForeColor=Color.Wheat; Font=new Font("Segoe UI",11);
-  var title=new Label(){Text="ВОЙНА ЗА КУБАНЬ",Dock=DockStyle.Top,Height=78,Font=new Font("Georgia",26,FontStyle.Bold),TextAlign=ContentAlignment.MiddleCenter};
-  var assembly=System.Reflection.Assembly.GetExecutingAssembly(); using(var imageStream=assembly.GetManifestResourceStream("Classic.Background")){if(imageStream!=null)using(var image=Image.FromStream(imageStream))classicBackground=new Bitmap(image);} musicResource=assembly.GetManifestResourceStream("Classic.Music"); if(musicResource!=null)soundtrack.Stream=musicResource; var tabs=new TabControl(){Dock=DockStyle.Fill}; var home=new TabPage("Главная"){BackColor=BackColor,ForeColor=ForeColor}; var n=new TabPage("Новости");var u=new TabPage("Обновления");var s=new TabPage("Настройки"){BackColor=BackColor,ForeColor=ForeColor};
-  tabs.TabPages.AddRange(new[]{home,n,u,s}); Controls.Add(tabs);Controls.Add(title);
-  var stack=new FlowLayoutPanel(){Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown,WrapContents=false,Padding=new Padding(24),AutoScroll=true};
-  home.BackgroundImage=classicBackground;home.BackgroundImageLayout=ImageLayout.Stretch;stack.BackColor=Color.Transparent;home.Controls.Add(stack); foreach(var l in new[]{version,status}){l.Width=650;l.Height=55;l.BackColor=Color.FromArgb(34,31,26);stack.Controls.Add(l);} progress.Width=620;progress.Height=22;stack.Controls.Add(progress);
-  Setup(play,"Скачать игру",stack); Setup(check,"Проверить файлы",stack);Setup(pause,"Приостановить",stack);
-  var settings=new FlowLayoutPanel(){Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown,Padding=new Padding(20)};s.Controls.Add(settings);folder.Width=650;folder.Height=65;settings.Controls.Add(folder);Setup(choose,"Выбрать папку игры",settings);settings.Controls.Add(auto);settings.Controls.Add(music);string musicPref=Path.Combine(Data,"music.txt");music.Checked=!File.Exists(musicPref)||File.ReadAllText(musicPref)!="0";music.CheckedChanged+=(a,b)=>{File.WriteAllText(musicPref,music.Checked?"1":"0");SetMusic();}; string pref=Path.Combine(Data,"auto.txt");auto.Checked=!File.Exists(pref)||File.ReadAllText(pref)!="0";auto.CheckedChanged+=(a,b)=>File.WriteAllText(pref,auto.Checked?"1":"0");
-  foreach(var box in new[]{news,changes}){box.Dock=DockStyle.Fill;box.ReadOnly=true;box.BackColor=Color.FromArgb(34,39,40);box.ForeColor=Color.Wheat;box.BorderStyle=BorderStyle.None;}
-  n.Controls.Add(news);u.Controls.Add(changes);
+  Text="Война за Кубань • Classic Launcher 2.1.2"; ClientSize=new Size(1000,650); MinimumSize=new Size(900,620); AutoScaleMode=AutoScaleMode.None;
+  var assembly=System.Reflection.Assembly.GetExecutingAssembly();using(var imageStream=assembly.GetManifestResourceStream("Classic.Background")){if(imageStream!=null)using(var image=Image.FromStream(imageStream))classicBackground=new Bitmap(image);}musicResource=assembly.GetManifestResourceStream("Classic.Music");if(musicResource!=null)soundtrack.Stream=musicResource;
+  var canvas=new Panel(){Dock=DockStyle.Fill,BackColor=Color.FromArgb(11,17,28),BackgroundImage=classicBackground,BackgroundImageLayout=ImageLayout.Stretch};Controls.Add(canvas);
+  var title=new Label(){Text="ВОЙНА ЗА КУБАНЬ",Font=new Font("Georgia",24,FontStyle.Bold),ForeColor=Color.Wheat,BackColor=Color.Transparent,TextAlign=ContentAlignment.MiddleCenter};
+  canvas.Controls.Add(title);
+  var section=new Label(){Text="НОВОСТИ",Font=new Font("Georgia",16,FontStyle.Bold),ForeColor=Color.Wheat,BackColor=Color.FromArgb(12,19,30),TextAlign=ContentAlignment.MiddleLeft};
+  var newsBtn=new Button(), updatesBtn=new Button(), settingsBtn=new Button();
+  foreach(var pair in new[]{new{Button=newsBtn,Text="Новости"},new{Button=updatesBtn,Text="Обновления"},new{Button=settingsBtn,Text="Настройки"}})Setup(pair.Button,pair.Text,canvas);
+  Setup(play,"Скачать игру",canvas);Setup(check,"Проверить файлы",canvas);Setup(pause,"Приостановить",canvas);
+  foreach(var l in new[]{version,status,folder}){l.ForeColor=Color.Wheat;l.BackColor=Color.FromArgb(12,19,30);l.TextAlign=ContentAlignment.MiddleLeft;canvas.Controls.Add(l);}
+  canvas.Controls.Add(progress);canvas.Controls.Add(section);
+  foreach(var box in new[]{news,changes}){box.ReadOnly=true;box.BackColor=Color.FromArgb(12,19,30);box.ForeColor=Color.Wheat;box.BorderStyle=BorderStyle.None;box.Font=new Font("Segoe UI",11);canvas.Controls.Add(box);}
+  Setup(choose,"Выбрать папку игры",canvas);foreach(var cb in new[]{auto,music}){cb.BackColor=Color.FromArgb(12,19,30);cb.ForeColor=Color.Wheat;canvas.Controls.Add(cb);}
+  string musicPref=Path.Combine(Data,"music.txt");music.Checked=!File.Exists(musicPref)||File.ReadAllText(musicPref)!="0";music.CheckedChanged+=(a,b)=>{File.WriteAllText(musicPref,music.Checked?"1":"0");SetMusic();};string pref=Path.Combine(Data,"auto.txt");auto.Checked=!File.Exists(pref)||File.ReadAllText(pref)!="0";auto.CheckedChanged+=(a,b)=>File.WriteAllText(pref,auto.Checked?"1":"0");
+  Action<int> showPage=page=>{news.Visible=page==0;changes.Visible=page==1;folder.Visible=choose.Visible=auto.Visible=music.Visible=page==2;section.Text=new[]{"НОВОСТИ","ОБНОВЛЕНИЯ","НАСТРОЙКИ"}[page];newsBtn.BackColor=page==0?Color.FromArgb(115,86,44):Color.FromArgb(28,38,53);updatesBtn.BackColor=page==1?Color.FromArgb(115,86,44):Color.FromArgb(28,38,53);settingsBtn.BackColor=page==2?Color.FromArgb(115,86,44):Color.FromArgb(28,38,53);};
+  newsBtn.Click+=(a,b)=>showPage(0);updatesBtn.Click+=(a,b)=>showPage(1);settingsBtn.Click+=(a,b)=>showPage(2);
+  Action layout=()=>{double sx=canvas.ClientSize.Width/1000.0,sy=canvas.ClientSize.Height/650.0;Action<Control,int,int,int,int> pos=(c,x,y,w,h)=>c.SetBounds((int)(x*sx),(int)(y*sy),(int)(w*sx),(int)(h*sy));
+    pos(title,40,8,920,52);pos(newsBtn,490,80,138,36);pos(updatesBtn,635,80,155,36);pos(settingsBtn,797,80,156,36);pos(section,490,130,460,35);
+    pos(news,490,174,460,414);pos(changes,490,174,460,414);pos(folder,490,174,460,75);pos(choose,490,260,460,42);pos(auto,490,320,460,42);pos(music,490,369,460,42);
+    pos(version,50,444,375,30);pos(status,50,478,375,43);pos(progress,50,524,375,12);pos(play,50,545,375,42);pos(check,50,592,185,34);pos(pause,240,592,185,34);
+  };canvas.Resize+=(a,b)=>layout();layout();showPage(0);
   choose.Click+=async (a,b)=>{using(var d=new FolderBrowserDialog()){d.Description="Выберите папку с EXE или пустую папку для установки";if(d.ShowDialog()!=DialogResult.OK)return;root=d.SelectedPath;File.WriteAllText(cfg,root);await RefreshGame();}};
   check.Click+=async(a,b)=>await RefreshGame();pause.Click+=(a,b)=>{if(cancel!=null)cancel.Cancel();};play.Click+=async(a,b)=>{if(online && pending.Count>0)await Install();else if(File.Exists(GameExe())){try{game=Process.Start(new ProcessStartInfo(GameExe()){WorkingDirectory=root});}catch(Exception e){status.Text=e.Message;}}else await RefreshGame();};
   Shown+=async(a,b)=>{SetMusic();await RefreshGame();if(auto.Checked && online && pending.Count>0 && File.Exists(GameExe()) && !Running())await Install();};FormClosing+=(a,b)=>{if(busy){b.Cancel=true;status.Text="Сначала завершите или приостановите операцию.";if(cancel!=null)cancel.Cancel();}};
   FormClosed+=(a,b)=>{soundtrack.Stop();soundtrack.Dispose();if(musicResource!=null)musicResource.Dispose();if(classicBackground!=null)classicBackground.Dispose();http.Dispose();};news.Text="Новости пока не загружены."; changes.Text="Обновления пока не загружены.";UpdateUI();
  }
  void SetMusic(){try{if(music.Checked&&musicResource!=null)soundtrack.PlayLooping();else soundtrack.Stop();}catch(Exception e){Debug.WriteLine(e.Message);}}
- void Setup(Button b,string t,Control p){b.Text=t;b.Width=300;b.Height=43;b.FlatStyle=FlatStyle.Flat;b.BackColor=Color.FromArgb(91,70,43);b.ForeColor=Color.Wheat;p.Controls.Add(b);}
+ void Setup(Button b,string t,Control p){b.Text=t;b.Width=300;b.Height=43;b.FlatStyle=FlatStyle.Flat;b.BackColor=Color.FromArgb(91,70,43);b.ForeColor=Color.Wheat;b.UseVisualStyleBackColor=false;b.FlatAppearance.BorderColor=Color.FromArgb(173,138,76);b.FlatAppearance.MouseOverBackColor=Color.FromArgb(125,94,49);b.FlatAppearance.MouseDownBackColor=Color.FromArgb(72,52,30);p.Controls.Add(b);}
  string GameExe(){return Path.Combine(root,exeName);}
  void UpdateUI(){folder.Text=root;choose.Enabled=check.Enabled=!busy;pause.Enabled=busy && cancel!=null;play.Enabled=!busy;play.Text=online&&pending.Count>0?(File.Exists(GameExe())?"Обновить / восстановить":"Скачать игру"):"Играть";if(!online&&!File.Exists(GameExe()))play.Text="Повторить проверку";}
  static string Safe(string basePath,string relative){
@@ -64,7 +76,7 @@ class Launcher : Form {
  static bool Valid(string p,Entry e){return File.Exists(p)&&new FileInfo(p).Length==e.size&&Hash(p)==e.sha256;}
  string AssetUrl(string name){var a=release.assets.Single(x=>x.name==name);var uri=new Uri(a.browser_download_url);if(uri.Scheme!="https"||uri.Host!="github.com"||!uri.AbsolutePath.StartsWith("/trendfuzee-sys/Kuban-War/releases/download/",StringComparison.Ordinal))throw new Exception("Недоверенный адрес");return a.browser_download_url;}
  async Task RefreshGame(){
-  busy=true;online=false;pending.Clear();UpdateUI();status.Text="Проверка обновлений…";progress.Value=0;
+  busy=true;online=false;pending.Clear();UpdateUI();status.Text="Проверка обновлений…";version.Text="Проверка версии";progress.Value=0;
   try {
    try{var feed=json.Deserialize<List<News>>(await http.GetStringAsync(Raw));news.Text=String.Join("\n\n",feed.Select(x=>x.date+"  "+x.title+"\n"+x.body));File.WriteAllText(Path.Combine(Data,"news.txt"),news.Text);}catch{if(File.Exists(Path.Combine(Data,"news.txt")))news.Text=File.ReadAllText(Path.Combine(Data,"news.txt"));}
    release=json.Deserialize<Release>(await http.GetStringAsync(Api+"/releases/latest"));
