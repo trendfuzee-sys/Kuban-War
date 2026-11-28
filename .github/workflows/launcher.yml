@@ -7,6 +7,9 @@ on:
       - '.github/workflows/launcher.yml'
 permissions:
   contents: write
+concurrency:
+  group: kuban-launcher-release
+  cancel-in-progress: true
 jobs:
   build:
     runs-on: windows-latest
@@ -64,10 +67,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tag = 'launcher-v2.1.1'
+          $tag = 'launcher-v2.1.2'
           gh release view $tag *> $null
           if ($LASTEXITCODE -ne 0) {
-            gh release create $tag --title 'Kuban Launcher Classic 2.1.1' --notes 'Source-built classic launcher with original media and incremental file updates. Self-signed Authenticode; not publicly trusted. Antivirus verification pending.' --latest=false
+            gh release create $tag --title 'Kuban Launcher Classic 2.1.2' --notes 'Source-built classic launcher with original media and incremental file updates. Self-signed Authenticode; not publicly trusted. Antivirus verification pending.' --latest=false
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
           gh release upload $tag launcher/KubanLauncher.exe launcher/SHA256SUMS.txt launcher/KubanWar-Publisher.cer --clobber
